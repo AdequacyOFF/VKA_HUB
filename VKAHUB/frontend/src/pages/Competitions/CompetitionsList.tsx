@@ -1,0 +1,145 @@
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Container, Title, Grid, Stack, TextInput, Select, Group, Text } from '@mantine/core';
+import { useQuery } from '@tanstack/react-query';
+import { IconSearch, IconTrophy, IconFilter } from '@tabler/icons-react';
+import { VTBCard } from '../../components/common/VTBCard';
+import { CompetitionCard } from '../../components/common/CompetitionCard';
+import { competitionsApi } from '../../api';
+
+export function CompetitionsList() {
+  const navigate = useNavigate();
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [typeFilter, setTypeFilter] = useState<string | null>(null);
+
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['competitions'],
+    queryFn: async () => {
+      try {
+        const response = await competitionsApi.getCompetitions({ limit: 50 });
+        return response;
+      } catch (error) {
+        console.error('Failed to fetch competitions:', error);
+        return { items: [], total: 0 };
+      }
+    },
+  });
+
+  // Safe array access
+  const safeItems = Array.isArray(data?.items) ? data.items : [];
+  const filteredCompetitions = safeItems.filter((comp) => {
+    const searchLower = search.toLowerCase();
+    const matchesSearch = !search ||
+      (comp.name || '').toLowerCase().includes(searchLower) ||
+      (comp.description || '').toLowerCase().includes(searchLower);
+
+    const matchesStatus = !statusFilter || comp.status === statusFilter;
+    const matchesType = !typeFilter || comp.type === typeFilter;
+
+    return matchesSearch && matchesStatus && matchesType;
+  });
+
+  return (
+    <Container size="xl" py="xl">
+      <Stack gap="xl">
+        <div>
+          <Title order={1} className="vtb-heading-hero">
+            <span className="vtb-gradient-text">Соревнования</span>
+          </Title>
+          <Text size="lg" c="dimmed" mt="md">
+            Примите участие в хакатонах, олимпиадах и чемпионатах
+          </Text>
+        </div>
+
+        <VTBCard variant="secondary">
+          <Group gap="md" grow>
+            <TextInput
+              placeholder="Поиск соревнований..."
+              leftSection={<IconSearch size={18} />}
+              value={search}
+              onChange={(e) => setSearch(e.currentTarget.value)}
+              size="md"
+              classNames={{ input: 'glass-input' }}
+            />
+            <Select
+              placeholder="Статус"
+              leftSection={<IconFilter size={18} />}
+              data={[
+                { value: '', label: 'Все статусы' },
+                { value: 'upcoming', label: 'Предстоящие' },
+                { value: 'ongoing', label: 'Идут сейчас' },
+                { value: 'completed', label: 'Завершённые' },
+              ]}
+              value={statusFilter}
+              onChange={setStatusFilter}
+              clearable
+              size="md"
+              classNames={{ input: 'glass-input' }}
+            />
+            <Select
+              placeholder="Тип"
+              leftSection={<IconTrophy size={18} />}
+              data={[
+                { value: '', label: 'Все типы' },
+                { value: 'hackathon', label: 'Хакатон' },
+                { value: 'olympiad', label: 'Олимпиада' },
+                { value: 'championship', label: 'Чемпионат' },
+                { value: 'other', label: 'Другое' },
+              ]}
+              value={typeFilter}
+              onChange={setTypeFilter}
+              clearable
+              size="md"
+              classNames={{ input: 'glass-input' }}
+            />
+          </Group>
+        </VTBCard>
+
+        {isLoading ? (
+          <VTBCard variant="secondary">
+            <Title order={4} c="white" ta="center">
+              Загрузка...
+            </Title>
+          </VTBCard>
+        ) : error ? (
+          <VTBCard variant="secondary">
+            <Title order={4} c="red" ta="center">
+              Ошибка загрузки соревнований
+            </Title>
+          </VTBCard>
+        ) : filteredCompetitions.length === 0 ? (
+          <VTBCard variant="primary">
+            <Stack align="center" gap="md" py="xl">
+              <IconTrophy size={80} color="var(--vtb-cyan)" opacity={0.5} />
+              <Text size="lg" c="dimmed" ta="center">
+                {search || statusFilter || typeFilter
+                  ? 'Соревнования не найдены'
+                  : 'Нет доступных соревнований'}
+              </Text>
+            </Stack>
+          </VTBCard>
+        ) : (
+          <Grid gutter="lg">
+            {filteredCompetitions.map((competition) => (
+              <Grid.Col key={competition.id} span={{ base: 12, sm: 6, md: 4 }}>
+                <CompetitionCard
+                  id={competition.id}
+                  name={competition.name}
+                  type={competition.type}
+                  description={competition.description}
+                  image={competition.image_url}
+                  link={competition.link}
+                  startDate={competition.start_date}
+                  endDate={competition.end_date}
+                  registrationDeadline={competition.registration_deadline}
+                  onClick={() => navigate(`/competitions/${competition.id}`)}
+                />
+              </Grid.Col>
+            ))}
+          </Grid>
+        )}
+      </Stack>
+    </Container>
+  );
+}

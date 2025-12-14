@@ -1,0 +1,85 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: vkahub_postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-vkahub}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-vkahub_password}
+      POSTGRES_DB: ${POSTGRES_DB:-vkahub}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - vkahub_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-vkahub}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: vkahub_backend
+    environment:
+      # Database configuration (needed for pg_isready in entrypoint)
+      POSTGRES_USER: ${POSTGRES_USER:-vkahub}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-vkahub_password}
+      POSTGRES_DB: ${POSTGRES_DB:-vkahub}
+      # Application configuration
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-vkahub}:${POSTGRES_PASSWORD:-vkahub_password}@postgres:5432/${POSTGRES_DB:-vkahub}
+      SECRET_KEY: ${SECRET_KEY:-your-secret-key-change-in-production}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-15}
+      REFRESH_TOKEN_EXPIRE_DAYS: ${REFRESH_TOKEN_EXPIRE_DAYS:-7}
+      UPLOAD_DIR: /app/static/uploads
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://localhost:3001,http://frontend,http://frontend:80}
+      DEBUG: ${DEBUG:-True}
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - static_uploads:/app/static/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - vkahub_network
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: vkahub_frontend
+    volumes:
+    - ./frontend:/app
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - vkahub_network
+
+  adminer:
+    image: adminer:latest
+    container_name: vkahub_adminer
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+    networks:
+      - vkahub_network
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+
+volumes:
+  postgres_data:
+    driver: local
+  static_uploads:
+    driver: local
+
+networks:
+  vkahub_network:
+    driver: bridge

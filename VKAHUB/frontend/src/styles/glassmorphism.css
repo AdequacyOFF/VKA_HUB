@@ -1,0 +1,376 @@
+/* VTB-Inspired Design System */
+
+:root {
+  /* VTB Color Palette */
+  --vtb-blue-dark: #0A1F44;
+  --vtb-blue-primary: #1E4C8F;
+  --vtb-blue-medium: #2563B8;
+  --vtb-blue-light: #3B82F6;
+  --vtb-cyan: #00D9FF;
+  --vtb-cyan-light: #33E3FF;
+
+  /* Glass Effects */
+  --glass-bg-light: rgba(255, 255, 255, 0.1);
+  --glass-bg-dark: rgba(10, 31, 68, 0.4);
+  --glass-border-light: rgba(255, 255, 255, 0.2);
+  --glass-border-dark: rgba(0, 217, 255, 0.2);
+  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
+  --glass-shadow-hover: 0 12px 48px 0 rgba(0, 217, 255, 0.3);
+  --glass-blur: 20px;
+
+  /* Typography */
+  --font-heading: 'Segoe UI', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+body {
+  background: linear-gradient(135deg, #0A1F44 0%, #1E4C8F 50%, #2563B8 100%);
+  background-attachment: fixed;
+  min-height: 100vh;
+  color: #ffffff;
+}
+
+[data-mantine-color-scheme='light'] body {
+  background: linear-gradient(135deg, #1E4C8F 0%, #2563B8 50%, #3B82F6 100%);
+}
+
+[data-mantine-color-scheme='dark'] body {
+  background: linear-gradient(135deg, #0A1F44 0%, #1E4C8F 50%, #2563B8 100%);
+}
+
+/* Glass Card */
+.glass-card {
+  background: var(--glass-bg-light);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border-radius: 20px;
+  border: 1px solid var(--glass-border-light);
+  box-shadow: var(--glass-shadow);
+  transition: all 0.3s ease;
+}
+
+.glass-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--glass-shadow-hover);
+  border-color: var(--vtb-cyan);
+}
+
+[data-mantine-color-scheme='dark'] .glass-card {
+  background: var(--glass-bg-dark);
+  border: 1px solid var(--glass-border-dark);
+}
+
+/* VTB-specific card variants */
+.vtb-card-primary {
+  background: linear-gradient(135deg, rgba(37, 99, 184, 0.6) 0%, rgba(59, 130, 246, 0.4) 100%);
+  border: 1px solid rgba(0, 217, 255, 0.3);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.vtb-card-secondary {
+  background: linear-gradient(135deg, rgba(30, 76, 143, 0.5) 0%, rgba(37, 99, 184, 0.3) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.vtb-card-accent {
+  background: linear-gradient(135deg, rgba(0, 217, 255, 0.3) 0%, rgba(51, 227, 255, 0.2) 100%);
+  border: 1px solid var(--vtb-cyan);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+/* Glass Header */
+.glass-header {
+  background: rgba(10, 31, 68, 0.8);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(0, 217, 255, 0.3);
+}
+
+[data-mantine-color-scheme='dark'] .glass-header {
+  background: rgba(10, 31, 68, 0.9);
+  border-bottom: 1px solid rgba(0, 217, 255, 0.2);
+}
+
+/* Glass Input */
+.glass-input {
+  background: rgba(255, 255, 255, 0.1) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  color: #ffffff !important;
+}
+
+.glass-input::placeholder {
+  color: rgba(255, 255, 255, 0.6) !important;
+}
+
+.glass-input:focus {
+  border-color: var(--vtb-cyan) !important;
+  box-shadow: 0 0 0 2px rgba(0, 217, 255, 0.3) !important;
+}
+
+[data-mantine-color-scheme='dark'] .glass-input {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+}
+
+/* Glass Button */
+.glass-button {
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  transition: all 0.3s ease;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.glass-button:hover {
+  background: rgba(255, 255, 255, 0.25);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 217, 255, 0.4);
+  border-color: var(--vtb-cyan);
+}
+
+[data-mantine-color-scheme='dark'] .glass-button {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+[data-mantine-color-scheme='dark'] .glass-button:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: var(--vtb-cyan);
+}
+
+/* VTB Button Variants */
+.vtb-button-primary {
+  background: linear-gradient(135deg, var(--vtb-cyan) 0%, var(--vtb-cyan-light) 100%);
+  color: var(--vtb-blue-dark);
+  border: none;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 12px 32px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.vtb-button-primary:hover {
+  background: linear-gradient(135deg, var(--vtb-cyan-light) 0%, var(--vtb-cyan) 100%);
+  box-shadow: 0 8px 32px rgba(0, 217, 255, 0.5);
+  transform: translateY(-3px);
+}
+
+.vtb-button-secondary {
+  background: rgba(59, 130, 246, 0.3);
+  border: 2px solid var(--vtb-blue-light);
+  color: #ffffff;
+  font-weight: 600;
+  padding: 10px 28px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.vtb-button-secondary:hover {
+  background: rgba(59, 130, 246, 0.5);
+  border-color: var(--vtb-cyan);
+  box-shadow: 0 8px 24px rgba(59, 130, 246, 0.4);
+  transform: translateY(-2px);
+}
+
+/* Glass Modal */
+.glass-modal {
+  background: rgba(10, 31, 68, 0.95);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  border-radius: 24px;
+  border: 1px solid rgba(0, 217, 255, 0.3);
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.4);
+}
+
+[data-mantine-color-scheme='dark'] .glass-modal {
+  background: rgba(10, 31, 68, 0.98);
+  border: 1px solid rgba(0, 217, 255, 0.2);
+}
+
+/* VTB Typography */
+.vtb-heading-hero {
+  font-family: var(--font-heading);
+  font-size: clamp(2.5rem, 5vw, 4.5rem);
+  font-weight: 700;
+  line-height: 1.2;
+  background: linear-gradient(135deg, #ffffff 0%, var(--vtb-cyan) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 1.5rem;
+}
+
+.vtb-heading-section {
+  font-family: var(--font-heading);
+  font-size: clamp(1.8rem, 3vw, 3rem);
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.vtb-text-accent {
+  color: var(--vtb-cyan);
+  font-weight: 600;
+}
+
+.vtb-text-outline {
+  color: transparent;
+  -webkit-text-stroke: 2px rgba(255, 255, 255, 0.8);
+  text-stroke: 2px rgba(255, 255, 255, 0.8);
+}
+
+/* VTB Avatar */
+.vtb-avatar {
+  border-radius: 50%;
+  border: 4px solid var(--vtb-cyan);
+  box-shadow: 0 8px 32px rgba(0, 217, 255, 0.4);
+  transition: all 0.3s ease;
+}
+
+.vtb-avatar:hover {
+  transform: scale(1.05);
+  box-shadow: 0 12px 48px rgba(0, 217, 255, 0.6);
+}
+
+/* VTB Name Badge */
+.vtb-name-badge {
+  background: linear-gradient(135deg, var(--vtb-cyan) 0%, var(--vtb-cyan-light) 100%);
+  color: var(--vtb-blue-dark);
+  padding: 12px 24px;
+  border-radius: 0 12px 12px 0;
+  font-weight: 700;
+  font-size: 1.2rem;
+  position: relative;
+  clip-path: polygon(0 0, 100% 0, 95% 100%, 0 100%);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Scrolling Banner */
+.vtb-scroll-banner {
+  background: var(--vtb-blue-primary);
+  border-top: 2px solid var(--vtb-cyan);
+  border-bottom: 2px solid var(--vtb-cyan);
+  padding: 16px 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.vtb-scroll-text {
+  display: inline-block;
+  padding-left: 100%;
+  animation: scroll-left 30s linear infinite;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #ffffff;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+@keyframes scroll-left {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-100%);
+  }
+}
+
+/* Hero Section Gradient Text */
+.vtb-gradient-text {
+  background: linear-gradient(135deg, var(--vtb-cyan) 0%, var(--vtb-cyan-light) 50%, #ffffff 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  display: inline-block;
+}
+
+/* Feature Cards Grid */
+.vtb-features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 24px;
+  margin: 32px 0;
+}
+
+/* Responsive utilities */
+@media (max-width: 768px) {
+  .vtb-heading-hero {
+    font-size: 2rem;
+  }
+
+  .vtb-heading-section {
+    font-size: 1.5rem;
+  }
+
+  .vtb-features-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .vtb-scroll-text {
+    font-size: 1.2rem;
+  }
+}
+
+/* Utility Classes */
+.vtb-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.vtb-section {
+  padding: 80px 0;
+}
+
+.vtb-flex-center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.vtb-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 32px;
+}
+
+.vtb-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+
+@media (max-width: 992px) {
+  .vtb-grid-3 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .vtb-grid-2,
+  .vtb-grid-3 {
+    grid-template-columns: 1fr;
+  }
+
+  .vtb-section {
+    padding: 48px 0;
+  }
+}
