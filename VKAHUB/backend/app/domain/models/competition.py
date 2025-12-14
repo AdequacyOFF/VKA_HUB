@@ -27,7 +27,7 @@ class Competition(Base):
     image_url = Column(String(500))
     start_date = Column(Date, nullable=False)
     end_date = Column(Date, nullable=False)
-    registration_deadline = Column(Date, nullable=False)
+    registration_deadline = Column(DateTime, nullable=False)
     description = Column(Text)
     other_type_description = Column(String(255))  # Description for "other" type competitions
     min_team_size = Column(Integer, nullable=False, default=2)  # Minimum team members

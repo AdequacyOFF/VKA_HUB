@@ -172,7 +172,7 @@ def upgrade() -> None:
         sa.Column('image_url', sa.String(length=500), nullable=True),
         sa.Column('start_date', sa.Date(), nullable=False),
         sa.Column('end_date', sa.Date(), nullable=False),
-        sa.Column('registration_deadline', sa.Date(), nullable=False),
+        sa.Column('registration_deadline', sa.DateTime(), nullable=False),
         sa.Column('description', sa.Text(), nullable=True),
         sa.Column('case_file_url', sa.String(length=500), nullable=True),
         sa.Column('tasks_file_url', sa.String(length=500), nullable=True),

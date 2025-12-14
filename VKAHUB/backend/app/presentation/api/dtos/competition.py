@@ -30,7 +30,7 @@ class CreateCompetitionRequest(BaseModel):
     image_url: Optional[str] = None
     start_date: date
     end_date: date
-    registration_deadline: date
+    registration_deadline: datetime
     description: Optional[str] = None
     other_type_description: Optional[str] = Field(None, max_length=255)
     min_team_size: int = Field(default=2, ge=1, le=10)
@@ -39,6 +39,14 @@ class CreateCompetitionRequest(BaseModel):
     tasks_file_url: Optional[str] = None
     stages: List[CompetitionStageRequest] = Field(default_factory=list)
     cases: List[CompetitionCaseRequest] = Field(default_factory=list)
+
+    @field_validator('registration_deadline')
+    @classmethod
+    def validate_registration_deadline(cls, v):
+        if v is not None and v.tzinfo is not None:
+            # Convert timezone-aware datetime to naive datetime in UTC
+            return v.replace(tzinfo=None)
+        return v
 
     @field_validator('max_team_size')
     @classmethod
@@ -97,7 +105,7 @@ class UpdateCompetitionRequest(BaseModel):
     image_url: Optional[str] = None
     start_date: Optional[date] = None
     end_date: Optional[date] = None
-    registration_deadline: Optional[date] = None
+    registration_deadline: Optional[datetime] = None
     description: Optional[str] = None
     other_type_description: Optional[str] = Field(None, max_length=255)
     min_team_size: Optional[int] = Field(None, ge=1, le=10)
@@ -106,6 +114,14 @@ class UpdateCompetitionRequest(BaseModel):
     tasks_file_url: Optional[str] = None
     stages: Optional[List[CompetitionStageRequest]] = None
     cases: Optional[List[CompetitionCaseRequest]] = None
+
+    @field_validator('registration_deadline')
+    @classmethod
+    def validate_registration_deadline(cls, v):
+        if v is not None and v.tzinfo is not None:
+            # Convert timezone-aware datetime to naive datetime in UTC
+            return v.replace(tzinfo=None)
+        return v
 
 
 class CompetitionResponse(BaseModel):
@@ -117,7 +133,7 @@ class CompetitionResponse(BaseModel):
     image_url: Optional[str] = None
     start_date: date
     end_date: date
-    registration_deadline: date
+    registration_deadline: datetime
     description: Optional[str] = None
     other_type_description: Optional[str] = None
     min_team_size: int
