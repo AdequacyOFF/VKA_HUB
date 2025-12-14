@@ -105,3 +105,45 @@ class PlatformComplaintRepositoryImpl:
         for category, count in result.all():
             counts[category.value] = count
         return counts
+
+    async def respond_to_complaint(
+        self,
+        complaint_id: int,
+        moderator_response: str,
+        status: ComplaintStatus,
+        resolved_by: int
+    ) -> Optional[PlatformComplaint]:
+        """Add moderator response to complaint and update status"""
+        complaint = await self.get_by_id(complaint_id)
+        if not complaint:
+            return None
+
+        complaint.moderator_response = moderator_response
+        complaint.status = status
+        complaint.resolved_by = resolved_by
+        complaint.response_read = False  # Mark as unread for user
+        await self.db.flush()
+        await self.db.refresh(complaint)
+        return complaint
+
+    async def mark_response_as_read(self, complaint_id: int) -> Optional[PlatformComplaint]:
+        """Mark moderator response as read by user"""
+        complaint = await self.get_by_id(complaint_id)
+        if not complaint:
+            return None
+
+        complaint.response_read = True
+        await self.db.flush()
+        await self.db.refresh(complaint)
+        return complaint
+
+    async def get_unread_responses_for_user(self, user_id: int) -> List[PlatformComplaint]:
+        """Get all platform complaints with unread moderator responses for a user"""
+        result = await self.db.execute(
+            select(PlatformComplaint)
+            .where(PlatformComplaint.user_id == user_id)
+            .where(PlatformComplaint.moderator_response.isnot(None))
+            .where(PlatformComplaint.response_read == False)
+            .order_by(PlatformComplaint.updated_at.desc())
+        )
+        return list(result.scalars().all())

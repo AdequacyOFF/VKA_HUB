@@ -3,10 +3,10 @@ import { Container, Title, Textarea, Stack, Box, Text, Group, Select, TextInput 
 import { useForm } from '@mantine/form';
 import { useMutation } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
-import { IconMessageReport, IconArrowLeft, IconSend, IconCategory } from '@tabler/icons-react';
+import { IconMessageReport, IconArrowLeft, IconSend, IconCategory, IconAlertTriangle } from '@tabler/icons-react';
 import { VTBCard } from '../../components/common/VTBCard';
 import { VTBButton } from '../../components/common/VTBButton';
-import { platformComplaintsApi, PlatformComplaintCategory } from '../../api/platformComplaints';
+import { platformComplaintsApi, PlatformComplaintCategory, ComplaintPriority } from '../../api/platformComplaints';
 
 const COMPLAINT_CATEGORIES = [
   { value: 'bug', label: 'Ошибка / Баг' },
@@ -17,17 +17,26 @@ const COMPLAINT_CATEGORIES = [
   { value: 'other', label: 'Другое' },
 ];
 
+const PRIORITY_OPTIONS = [
+  { value: 'low', label: 'Низкий' },
+  { value: 'medium', label: 'Средний' },
+  { value: 'high', label: 'Высокий' },
+  { value: 'critical', label: 'Критический' },
+];
+
 export function CreatePlatformComplaint() {
   const navigate = useNavigate();
 
   const form = useForm({
     initialValues: {
       category: '' as PlatformComplaintCategory,
+      priority: 'medium' as ComplaintPriority,
       title: '',
       description: '',
     },
     validate: {
       category: (value) => (!value ? 'Выберите категорию' : null),
+      priority: (value) => (!value ? 'Выберите приоритет' : null),
       title: (value) => {
         if (!value) return 'Введите заголовок';
         if (value.length < 5) return 'Заголовок должен быть не менее 5 символов';
@@ -65,6 +74,7 @@ export function CreatePlatformComplaint() {
   const handleSubmit = (values: typeof form.values) => {
     createComplaintMutation.mutate({
       category: values.category,
+      priority: values.priority,
       title: values.title,
       description: values.description,
     });
@@ -104,6 +114,20 @@ export function CreatePlatformComplaint() {
                   label: { color: '#ffffff', fontWeight: 600, marginBottom: 8 },
                 }}
                 {...form.getInputProps('category')}
+                required
+              />
+
+              <Select
+                label="Степень важности"
+                placeholder="Выберите приоритет"
+                data={PRIORITY_OPTIONS}
+                leftSection={<IconAlertTriangle size={18} />}
+                size="md"
+                classNames={{ input: 'glass-input' }}
+                styles={{
+                  label: { color: '#ffffff', fontWeight: 600, marginBottom: 8 },
+                }}
+                {...form.getInputProps('priority')}
                 required
               />
 

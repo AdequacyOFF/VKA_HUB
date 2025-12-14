@@ -8,6 +8,7 @@ import {
   IconUsersGroup,
   IconTrophy,
   IconFlag,
+  IconMessageReport,
   IconShieldCheck,
   IconFileAnalytics,
   IconLogout,
@@ -21,6 +22,7 @@ const navItems = [
   { path: '/moderator/teams', label: 'Команды', icon: IconUsersGroup },
   { path: '/moderator/competitions', label: 'Соревнования', icon: IconTrophy },
   { path: '/moderator/reports', label: 'Жалобы', icon: IconFlag },
+  { path: '/moderator/platform-complaints', label: 'Обратная связь', icon: IconMessageReport },
   { path: '/moderator/moderators', label: 'Модераторы', icon: IconShieldCheck },
   { path: '/moderator/analytics', label: 'Аналитика', icon: IconFileAnalytics },
 ];

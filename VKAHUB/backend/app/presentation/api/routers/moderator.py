@@ -16,7 +16,8 @@ from app.presentation.api.dtos.moderator import (
     UpdateControlQuestionRequest,    # ✅
     BanUserRequest,                  # ✅
     UnbanUserRequest,                # ✅
-    UserSecurityInfoResponse
+    UserSecurityInfoResponse,
+    RespondToPlatformComplaintRequest
 )
 from app.infrastructure.repositories.user_repository_impl import UserRepositoryImpl
 from app.infrastructure.repositories.moderator_repository_impl import ModeratorRepositoryImpl
@@ -746,11 +747,16 @@ async def list_platform_complaints(
 
         items.append(PlatformComplaintResponse(
             id=complaint.id,
+            user_id=complaint.user_id,
             user=user_obj.login if user_obj else f"User #{complaint.user_id}",
             category=complaint.category.value,
+            priority=complaint.priority.value,
             title=complaint.title,
             description=complaint.description,
             status=complaint.status.value,
+            moderator_response=complaint.moderator_response,
+            response_read=complaint.response_read,
+            resolved_by=complaint.resolved_by,
             created_at=complaint.created_at,
             updated_at=complaint.updated_at
         ))
@@ -761,13 +767,14 @@ async def list_platform_complaints(
     }
 
 
-@router.post("/platform-complaints/{complaint_id}/approve")
-async def approve_platform_complaint(
+@router.post("/platform-complaints/{complaint_id}/respond")
+async def respond_to_platform_complaint(
     complaint_id: int,
+    request: RespondToPlatformComplaintRequest,
     current_user = Depends(require_moderator),
     db: AsyncSession = Depends(get_db)
 ):
-    """Approve a platform complaint (mark as resolved)"""
+    """Respond to a platform complaint with moderator feedback"""
     from app.infrastructure.repositories.platform_complaint_repository_impl import PlatformComplaintRepositoryImpl
     from app.domain.models.platform_complaint import ComplaintStatus
 
@@ -780,45 +787,24 @@ async def approve_platform_complaint(
     if complaint.status != ComplaintStatus.PENDING:
         raise HTTPException(status_code=400, detail="Обращение уже рассмотрено")
 
+    # Validate status
+    if request.status not in ['resolved', 'rejected']:
+        raise HTTPException(status_code=400, detail="Недопустимый статус. Используйте 'resolved' или 'rejected'")
+
     try:
-        await complaint_repo.update_status(complaint_id, ComplaintStatus.RESOLVED, current_user.id)
+        status_enum = ComplaintStatus.RESOLVED if request.status == 'resolved' else ComplaintStatus.REJECTED
+        await complaint_repo.respond_to_complaint(
+            complaint_id,
+            request.response,
+            status_enum,
+            current_user.id
+        )
         await db.commit()
 
         return {
-            "message": "Обращение одобрено",
-            "complaint_id": complaint_id
-        }
-    except Exception as e:
-        await db.rollback()
-        raise HTTPException(status_code=500, detail=f"Ошибка: {str(e)}")
-
-
-@router.post("/platform-complaints/{complaint_id}/reject")
-async def reject_platform_complaint(
-    complaint_id: int,
-    current_user = Depends(require_moderator),
-    db: AsyncSession = Depends(get_db)
-):
-    """Reject a platform complaint"""
-    from app.infrastructure.repositories.platform_complaint_repository_impl import PlatformComplaintRepositoryImpl
-    from app.domain.models.platform_complaint import ComplaintStatus
-
-    complaint_repo = PlatformComplaintRepositoryImpl(db)
-
-    complaint = await complaint_repo.get_by_id(complaint_id)
-    if not complaint:
-        raise HTTPException(status_code=404, detail="Обращение не найдено")
-
-    if complaint.status != ComplaintStatus.PENDING:
-        raise HTTPException(status_code=400, detail="Обращение уже рассмотрено")
-
-    try:
-        await complaint_repo.update_status(complaint_id, ComplaintStatus.REJECTED, current_user.id)
-        await db.commit()
-
-        return {
-            "message": "Обращение отклонено",
-            "complaint_id": complaint_id
+            "message": "Ответ отправлен",
+            "complaint_id": complaint_id,
+            "status": request.status
         }
     except Exception as e:
         await db.rollback()

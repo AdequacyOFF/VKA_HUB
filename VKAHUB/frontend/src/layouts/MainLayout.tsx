@@ -1,7 +1,8 @@
 import { Outlet, Link } from 'react-router-dom';
 import { AppShell, Group, Button, Container, Text } from '@mantine/core';
-import { IconShieldCheck } from '@tabler/icons-react';
+import { IconShieldCheck, IconMessageReport } from '@tabler/icons-react';
 import { useAuthStore } from '@/store';
+import { UnreadResponsesModal } from '@/components/UnreadResponsesModal';
 
 export function MainLayout() {
   const { isAuthenticated, user, logout } = useAuthStore();
@@ -46,7 +47,20 @@ export function MainLayout() {
                 Соревнования
               </Button>
             </Link>
-            
+
+            {/* Ссылка "Обратная связь" - показывается только авторизованным пользователям */}
+            {isAuthenticated && (
+              <Link to="/platform-complaints/create">
+                <Button
+                  variant="subtle"
+                  radius="lg"
+                  leftSection={<IconMessageReport size={18} />}
+                >
+                  Обратная связь
+                </Button>
+              </Link>
+            )}
+
             {/* Ссылка "Модератор" - показывается только модераторам */}
             {user?.is_moderator && (
               <Link to="/moderator">
@@ -103,6 +117,9 @@ export function MainLayout() {
           <Outlet />
         </Container>
       </AppShell.Main>
+
+      {/* Unread responses modal */}
+      {isAuthenticated && <UnreadResponsesModal />}
     </AppShell>
   );
 }

@@ -23,7 +23,7 @@ def upgrade() -> None:
 
     # Create the platform complaint category enum
     platform_complaint_category_enum = postgresql.ENUM(
-        'bug', 'feature_request', 'performance', 'ui_ux', 'security', 'other',
+        'BUG', 'FEATURE_REQUEST', 'PERFORMANCE', 'UI_UX', 'SECURITY', 'OTHER',
         name='platformcomplaintcategory',
         create_type=False
     )
@@ -40,7 +40,7 @@ def upgrade() -> None:
         sa.Column('category', platform_complaint_category_enum, nullable=False),
         sa.Column('title', sa.String(255), nullable=False),
         sa.Column('description', sa.Text(), nullable=False),
-        sa.Column('status', postgresql.ENUM('pending', 'resolved', 'rejected', name='complaintstatus', create_type=False), server_default='pending', nullable=False),
+        sa.Column('status', postgresql.ENUM('PENDING', 'RESOLVED', 'REJECTED', name='complaintstatus', create_type=False), server_default='PENDING', nullable=False),
         sa.Column('resolved_by', sa.Integer(), sa.ForeignKey('users.id', ondelete='SET NULL'), nullable=True),
         sa.Column('created_at', sa.DateTime(), server_default=sa.func.now(), nullable=False),
         sa.Column('updated_at', sa.DateTime(), server_default=sa.func.now(), nullable=False),

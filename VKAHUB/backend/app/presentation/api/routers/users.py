@@ -631,15 +631,22 @@ async def create_platform_complaint(
 ):
     """Submit a complaint about the platform/site (authenticated users only)"""
     from app.infrastructure.repositories.platform_complaint_repository_impl import PlatformComplaintRepositoryImpl
-    from app.domain.models.platform_complaint import PlatformComplaintCategory
+    from app.domain.models.platform_complaint import PlatformComplaintCategory, ComplaintPriority
 
-    # Validate category
-    try:
-        category = PlatformComplaintCategory(request.category)
-    except ValueError:
+    # Validate category - just check if the string value is valid
+    valid_categories = [c.value for c in PlatformComplaintCategory]
+    if request.category not in valid_categories:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Недопустимая категория. Допустимые значения: {[c.value for c in PlatformComplaintCategory]}"
+            detail=f"Недопустимая категория. Допустимые значения: {valid_categories}"
+        )
+
+    # Validate priority - just check if the string value is valid
+    valid_priorities = [p.value for p in ComplaintPriority]
+    if request.priority not in valid_priorities:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Недопустимый приоритет. Допустимые значения: {valid_priorities}"
         )
 
     # Validate title length
@@ -674,7 +681,8 @@ async def create_platform_complaint(
     try:
         complaint = await complaint_repo.create({
             "user_id": current_user.id,
-            "category": category,
+            "category": request.category,
+            "priority": request.priority,
             "title": request.title,
             "description": request.description
         })
@@ -690,6 +698,92 @@ async def create_platform_complaint(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Ошибка при создании обращения: {str(e)}"
+        )
+
+
+@router.get("/platform-complaints/unread")
+async def get_unread_platform_complaint_responses(
+    current_user = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get unread moderator responses for current user's platform complaints"""
+    from app.infrastructure.repositories.platform_complaint_repository_impl import PlatformComplaintRepositoryImpl
+    from app.presentation.api.dtos.moderator import PlatformComplaintResponse
+
+    complaint_repo = PlatformComplaintRepositoryImpl(db)
+
+    try:
+        unread_complaints = await complaint_repo.get_unread_responses_for_user(current_user.id)
+
+        items = []
+        for complaint in unread_complaints:
+            items.append(PlatformComplaintResponse(
+                id=complaint.id,
+                user_id=complaint.user_id,
+                user=current_user.login,
+                category=complaint.category.value,
+                priority=complaint.priority.value,
+                title=complaint.title,
+                description=complaint.description,
+                status=complaint.status.value,
+                moderator_response=complaint.moderator_response,
+                response_read=complaint.response_read,
+                resolved_by=complaint.resolved_by,
+                created_at=complaint.created_at,
+                updated_at=complaint.updated_at
+            ))
+
+        return {
+            "items": items,
+            "count": len(items)
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Ошибка при получении ответов: {str(e)}"
+        )
+
+
+@router.post("/platform-complaints/{complaint_id}/mark-read")
+async def mark_platform_complaint_response_as_read(
+    complaint_id: int,
+    current_user = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Mark a moderator response as read"""
+    from app.infrastructure.repositories.platform_complaint_repository_impl import PlatformComplaintRepositoryImpl
+
+    complaint_repo = PlatformComplaintRepositoryImpl(db)
+
+    try:
+        complaint = await complaint_repo.get_by_id(complaint_id)
+        if not complaint:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Обращение не найдено"
+            )
+
+        # Verify that this complaint belongs to the current user
+        if complaint.user_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Нет доступа к этому обращению"
+            )
+
+        await complaint_repo.mark_response_as_read(complaint_id)
+        await db.commit()
+
+        return {
+            "message": "Ответ отмечен как прочитанный",
+            "complaint_id": complaint_id
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Ошибка при обновлении статуса: {str(e)}"
         )
 
 

@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from enum import Enum as PyEnum
-from sqlalchemy import Column, Integer, String, Text, ForeignKey, DateTime, Enum, func
+from sqlalchemy import Column, Integer, String, Text, ForeignKey, DateTime, Enum, Boolean, func
 from sqlalchemy.orm import relationship
 
 from app.infrastructure.db.base import Base
@@ -16,6 +16,14 @@ class PlatformComplaintCategory(str, PyEnum):
     UI_UX = "ui_ux"
     SECURITY = "security"
     OTHER = "other"
+
+
+class ComplaintPriority(str, PyEnum):
+    """Complaint priority enum"""
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    CRITICAL = "critical"
 
 
 class ComplaintStatus(str, PyEnum):
@@ -33,9 +41,12 @@ class PlatformComplaint(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     category = Column(Enum(PlatformComplaintCategory), nullable=False)
+    priority = Column(Enum(ComplaintPriority), default=ComplaintPriority.MEDIUM, nullable=False)
     title = Column(String(255), nullable=False)
     description = Column(Text, nullable=False)
     status = Column(Enum(ComplaintStatus), default=ComplaintStatus.PENDING, nullable=False, index=True)
+    moderator_response = Column(Text, nullable=True)
+    response_read = Column(Boolean, default=False, nullable=False)
     resolved_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(DateTime, server_default=func.now(), nullable=False, index=True)
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=False)
@@ -45,4 +56,4 @@ class PlatformComplaint(Base):
     resolver = relationship("User", foreign_keys=[resolved_by], backref="platform_complaints_resolved")
 
     def __repr__(self) -> str:
-        return f"<PlatformComplaint(id={self.id}, user_id={self.user_id}, category={self.category}, status={self.status})>"
+        return f"<PlatformComplaint(id={self.id}, user_id={self.user_id}, category={self.category}, priority={self.priority}, status={self.status})>"

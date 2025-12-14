@@ -33,6 +33,7 @@ import { ModeratorModerators } from '@/pages/Moderator/ModeratorModerators';
 import { ModeratorAnalytics } from '@/pages/Moderator/ModeratorAnalytics';
 import { CreateComplaint } from '@/pages/Complaints/CreateComplaint';
 import { CreatePlatformComplaint } from '@/pages/PlatformComplaints/CreatePlatformComplaint';
+import { ModeratorPlatformComplaints } from '@/pages/Moderator/ModeratorPlatformComplaints';
 
 const router = createBrowserRouter(
   [
@@ -73,7 +74,7 @@ const router = createBrowserRouter(
       { path: 'competitions/:id', element: <CompetitionDetail /> },
       { path: 'competitions/:id/register', element: <RegisterTeam /> },
       { path: 'complaints/create', element: <CreateComplaint /> },
-      { path: 'feedback', element: <CreatePlatformComplaint /> },
+      { path: 'platform-complaints/create', element: <CreatePlatformComplaint /> },
     ],
   },
   {
@@ -92,6 +93,7 @@ const router = createBrowserRouter(
       { path: 'competitions', element: <ModeratorCompetitions /> },
       { path: 'competitions/create', element: <CreateCompetition /> },
       { path: 'reports', element: <ModeratorReports /> },
+      { path: 'platform-complaints', element: <ModeratorPlatformComplaints /> },
       { path: 'moderators', element: <ModeratorModerators /> },
       { path: 'analytics', element: <ModeratorAnalytics /> },
     ],

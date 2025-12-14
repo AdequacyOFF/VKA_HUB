@@ -91,11 +91,16 @@ class CreateUserComplaintRequest(BaseModel):
 class PlatformComplaintResponse(BaseModel):
     """Platform complaint response for frontend"""
     id: int
+    user_id: int
     user: str  # user login/name
     category: str  # bug, feature_request, performance, ui_ux, security, other
+    priority: str  # low, medium, high, critical
     title: str
     description: str
     status: str    # 'pending', 'resolved', 'rejected'
+    moderator_response: Optional[str] = None
+    response_read: bool = False
+    resolved_by: Optional[int] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
 
@@ -106,8 +111,15 @@ class PlatformComplaintResponse(BaseModel):
 class CreatePlatformComplaintRequest(BaseModel):
     """Create platform complaint request"""
     category: str  # bug, feature_request, performance, ui_ux, security, other
+    priority: str  # low, medium, high, critical
     title: str
     description: str
+
+
+class RespondToPlatformComplaintRequest(BaseModel):
+    """Moderator response to platform complaint"""
+    response: str
+    status: str  # 'resolved' or 'rejected'
 
 
 # ========================================
