@@ -32,6 +32,7 @@ import { ModeratorReports } from '@/pages/Moderator/ModeratorReports';
 import { ModeratorModerators } from '@/pages/Moderator/ModeratorModerators';
 import { ModeratorAnalytics } from '@/pages/Moderator/ModeratorAnalytics';
 import { CreateComplaint } from '@/pages/Complaints/CreateComplaint';
+import { CreatePlatformComplaint } from '@/pages/PlatformComplaints/CreatePlatformComplaint';
 
 const router = createBrowserRouter(
   [
@@ -72,6 +73,7 @@ const router = createBrowserRouter(
       { path: 'competitions/:id', element: <CompetitionDetail /> },
       { path: 'competitions/:id/register', element: <RegisterTeam /> },
       { path: 'complaints/create', element: <CreateComplaint /> },
+      { path: 'feedback', element: <CreatePlatformComplaint /> },
     ],
   },
   {

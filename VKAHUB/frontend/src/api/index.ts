@@ -7,4 +7,5 @@ export * from './reports';
 export * from './moderator';
 export * from './public';
 export * from './complaints';
+export * from './platformComplaints';
 export { axiosInstance as api } from './axios';

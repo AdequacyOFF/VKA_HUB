@@ -716,6 +716,116 @@ async def reject_complaint(
 
 
 # ========================================
+# PLATFORM COMPLAINTS (Site Feedback) ENDPOINTS
+# ========================================
+
+@router.get("/platform-complaints")
+async def list_platform_complaints(
+    skip: int = 0,
+    limit: int = 100,
+    status: str = None,
+    category: str = None,
+    current_user = Depends(require_moderator),
+    db: AsyncSession = Depends(get_db)
+):
+    """List all platform complaints for moderation"""
+    from app.infrastructure.repositories.platform_complaint_repository_impl import PlatformComplaintRepositoryImpl
+    from app.presentation.api.dtos.moderator import PlatformComplaintResponse
+
+    complaint_repo = PlatformComplaintRepositoryImpl(db)
+
+    complaints = await complaint_repo.list_all(skip=skip, limit=limit, status=status, category=category)
+    total = await complaint_repo.count(status=status, category=category)
+
+    # Build response with user logins
+    items = []
+    for complaint in complaints:
+        # Get user login
+        user = await db.execute(select(User).where(User.id == complaint.user_id))
+        user_obj = user.scalar_one_or_none()
+
+        items.append(PlatformComplaintResponse(
+            id=complaint.id,
+            user=user_obj.login if user_obj else f"User #{complaint.user_id}",
+            category=complaint.category.value,
+            title=complaint.title,
+            description=complaint.description,
+            status=complaint.status.value,
+            created_at=complaint.created_at,
+            updated_at=complaint.updated_at
+        ))
+
+    return {
+        "items": items,
+        "total": total
+    }
+
+
+@router.post("/platform-complaints/{complaint_id}/approve")
+async def approve_platform_complaint(
+    complaint_id: int,
+    current_user = Depends(require_moderator),
+    db: AsyncSession = Depends(get_db)
+):
+    """Approve a platform complaint (mark as resolved)"""
+    from app.infrastructure.repositories.platform_complaint_repository_impl import PlatformComplaintRepositoryImpl
+    from app.domain.models.platform_complaint import ComplaintStatus
+
+    complaint_repo = PlatformComplaintRepositoryImpl(db)
+
+    complaint = await complaint_repo.get_by_id(complaint_id)
+    if not complaint:
+        raise HTTPException(status_code=404, detail="Обращение не найдено")
+
+    if complaint.status != ComplaintStatus.PENDING:
+        raise HTTPException(status_code=400, detail="Обращение уже рассмотрено")
+
+    try:
+        await complaint_repo.update_status(complaint_id, ComplaintStatus.RESOLVED, current_user.id)
+        await db.commit()
+
+        return {
+            "message": "Обращение одобрено",
+            "complaint_id": complaint_id
+        }
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Ошибка: {str(e)}")
+
+
+@router.post("/platform-complaints/{complaint_id}/reject")
+async def reject_platform_complaint(
+    complaint_id: int,
+    current_user = Depends(require_moderator),
+    db: AsyncSession = Depends(get_db)
+):
+    """Reject a platform complaint"""
+    from app.infrastructure.repositories.platform_complaint_repository_impl import PlatformComplaintRepositoryImpl
+    from app.domain.models.platform_complaint import ComplaintStatus
+
+    complaint_repo = PlatformComplaintRepositoryImpl(db)
+
+    complaint = await complaint_repo.get_by_id(complaint_id)
+    if not complaint:
+        raise HTTPException(status_code=404, detail="Обращение не найдено")
+
+    if complaint.status != ComplaintStatus.PENDING:
+        raise HTTPException(status_code=400, detail="Обращение уже рассмотрено")
+
+    try:
+        await complaint_repo.update_status(complaint_id, ComplaintStatus.REJECTED, current_user.id)
+        await db.commit()
+
+        return {
+            "message": "Обращение отклонено",
+            "complaint_id": complaint_id
+        }
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Ошибка: {str(e)}")
+
+
+# ========================================
 # ANALYTICS ENDPOINT
 # ========================================
 

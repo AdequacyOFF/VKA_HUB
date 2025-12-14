@@ -13,7 +13,7 @@ from app.presentation.api.dtos.user import (
     UpdateRolesSkillsRequest,
     UserListResponse
 )
-from app.presentation.api.dtos.moderator import CreateUserComplaintRequest
+from app.presentation.api.dtos.moderator import CreateUserComplaintRequest, CreatePlatformComplaintRequest
 from app.use_cases.user.update_profile import UpdateProfileUseCase
 from app.infrastructure.repositories.user_repository_impl import UserRepositoryImpl
 from app.infrastructure.security.password import hash_password
@@ -620,6 +620,76 @@ async def create_complaint(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Ошибка при создании жалобы: {str(e)}"
+        )
+
+
+@router.post("/platform-complaints")
+async def create_platform_complaint(
+    request: CreatePlatformComplaintRequest,
+    current_user = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Submit a complaint about the platform/site (authenticated users only)"""
+    from app.infrastructure.repositories.platform_complaint_repository_impl import PlatformComplaintRepositoryImpl
+    from app.domain.models.platform_complaint import PlatformComplaintCategory
+
+    # Validate category
+    try:
+        category = PlatformComplaintCategory(request.category)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Недопустимая категория. Допустимые значения: {[c.value for c in PlatformComplaintCategory]}"
+        )
+
+    # Validate title length
+    if len(request.title) < 5:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Заголовок должен содержать минимум 5 символов"
+        )
+
+    if len(request.title) > 255:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Заголовок не должен превышать 255 символов"
+        )
+
+    # Validate description length
+    if len(request.description) < 20:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Описание должно содержать минимум 20 символов"
+        )
+
+    if len(request.description) > 2000:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Описание не должно превышать 2000 символов"
+        )
+
+    # Create platform complaint
+    complaint_repo = PlatformComplaintRepositoryImpl(db)
+
+    try:
+        complaint = await complaint_repo.create({
+            "user_id": current_user.id,
+            "category": category,
+            "title": request.title,
+            "description": request.description
+        })
+        await db.commit()
+
+        return {
+            "message": "Обращение успешно отправлено. Спасибо за ваш отзыв!",
+            "complaint_id": complaint.id,
+            "status": complaint.status.value
+        }
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Ошибка при создании обращения: {str(e)}"
         )
 
 

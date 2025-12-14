@@ -131,6 +131,9 @@ async def update_team(
     db: AsyncSession = Depends(get_db)
 ):
     """Update team (captain or moderator only)"""
+    from app.domain.models.moderator import Moderator
+    from sqlalchemy import select
+
     team_repo = TeamRepositoryImpl(db)
     team = await team_repo.get_by_id(team_id)
 
@@ -140,12 +143,19 @@ async def update_team(
             detail="Team not found"
         )
 
-    # Check if user is captain
-    if team.captain_id != current_user.id:
-        # TODO: Check if user is moderator
+    # Check if user is captain or moderator
+    is_captain = team.captain_id == current_user.id
+
+    # Check if user is moderator
+    result = await db.execute(
+        select(Moderator).where(Moderator.user_id == current_user.id)
+    )
+    is_moderator = result.scalar_one_or_none() is not None
+
+    if not is_captain and not is_moderator:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only team captain can update team"
+            detail="Only team captain or moderator can update team"
         )
 
     update_data = request.model_dump(exclude_unset=True)

@@ -1,225 +1,370 @@
-# VKAHUB - Платформа управления соревнованиями
+# VKA HUB - Платформа управления соревнованиями
 
 Комплексная платформа для управления командами, соревнованиями, сертификатами и профилями пользователей с контролем доступа на основе ролей.
 
-## Технологический стек
+---
 
-### Backend
-- **FastAPI** - Современный Python веб-фреймворк
-- **SQLAlchemy 2.0** - Асинхронная ORM
-- **PostgreSQL** - Основная база данных
-- **Alembic** - Миграции базы данных
-- **Pydantic v2** - Валидация данных
-- **JWT** - Аутентификация
-- **python-docx** - Генерация отчетов
+## 🚀 Quick Start
 
-### Frontend
-- **React 18** - Библиотека пользовательского интерфейса
-- **TypeScript** - Типизация
-- **Vite** - Инструмент сборки
-- **Mantine UI** - Библиотека компонентов
-- **Zustand** - Управление состоянием
-- **React Query** - Управление серверным состоянием
-- **React Router** - Маршрутизация
-- **React Hook Form + Zod** - Валидация форм
+### Prerequisites
+- **Docker Desktop** (includes Docker Compose)
+- **Git**
 
-### Инфраструктура
-- **Docker & Docker Compose** - Контейнеризация
-- **PostgreSQL 15** - База данных
-- **Adminer** - UI для управления базой данных
+### Get Started (2 commands)
 
-## Возможности
-
-- **Аутентификация**: JWT с access и refresh токенами, обязательная авторизация для доступа к системе
-- **Контроль доступа на основе ролей**: Пользователь, Капитан, Модератор
-- **Профили пользователей**: 7 вкладок (Общая информация, Сертификаты, Роли и навыки, История команд, Моя команда, Участие в соревнованиях, История активности)
-- **Управление командами**: Создание команд, заявки на вступление, управление капитаном
-- **Система соревнований**: Подача заявок на соревнования, управление участниками
-- **Управление сертификатами**: Загрузка и управление сертификатами
-- **Панель модератора**: Управление пользователями, командами, соревнованиями, модераторами
-- **Генерация отчетов**: Создание .docx отчетов по соревнованиям
-- **Загрузка файлов**: Аватары, изображения команд, изображения соревнований, сертификаты, отчеты
-- **Журнал активности**: Автоматическое отслеживание действий пользователей
-- **Интерфейс на русском языке**: Весь интерфейс, сообщения об ошибках и уведомления на русском
-
-## Быстрый старт
-
-### Требования
-- Docker & Docker Compose
-- Git
-
-### Установка
-
-1. Клонируйте репозиторий:
 ```bash
 git clone <repository-url>
 cd VKAHUB
+./start.sh
 ```
 
-2. Скопируйте шаблоны переменных окружения:
-```bash
-cp backend/.env.template backend/.env
-cp frontend/.env.template frontend/.env
-```
+**That's it!** Open http://localhost:5173 in your browser.
 
-3. Обновите переменные окружения в `backend/.env` и `frontend/.env`
+The script automatically:
+- ✅ Checks Docker is running
+- ✅ Creates `.env` files from templates
+- ✅ Starts all services (PostgreSQL, Backend, Frontend, Adminer)
+- ✅ Runs database migrations
+- ✅ Enables hot reload for both frontend and backend
 
-4. Запустите приложение:
-```bash
-docker-compose up -d
-```
+---
 
-5. Выполните миграции:
-```bash
-docker-compose exec backend alembic upgrade head
-```
-
-### Доступ к приложению
-
-- **Frontend**: http://localhost:3000
-- **Backend API**: http://localhost:8000
-- **API Документация**: http://localhost:8000/docs
-- **Админка БД (Adminer)**: http://localhost:8080
-
-### Первый вход
-
-При первом запуске приложения вы увидите только страницы регистрации и входа. После регистрации вы получите доступ ко всем функциям системы. Для получения прав модератора обратитесь к администратору системы.
-
-## Разработка
-
-### Разработка Backend
+## 📝 Daily Usage
 
 ```bash
-cd backend
-python -m venv venv
-source venv/bin/activate  # На Windows: venv\Scripts\activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload
+# Start everything
+./start.sh
+
+# Stop everything
+./stop.sh
+
+# View logs
+docker compose logs -f
+
+# Restart a service
+docker compose restart backend
+docker compose restart frontend
 ```
 
-### Разработка Frontend
+---
+
+## 🌐 Service URLs
+
+| Service | URL | Hot Reload |
+|---------|-----|------------|
+| **Frontend** | http://localhost:5173 | ✅ Yes |
+| **Backend** | http://localhost:8000 | ✅ Yes |
+| **API Docs** | http://localhost:8000/docs | N/A |
+| **DB Admin** | http://localhost:8080 | N/A |
+
+---
+
+## 🔥 Hot Reload
+
+**Frontend** (React + Vite):
+- Edit any file in `frontend/src/**/*`
+- Browser auto-refreshes within 1-2 seconds
+
+**Backend** (FastAPI + Uvicorn):
+- Edit any file in `backend/app/**/*`
+- Server auto-restarts within 1-2 seconds
+
+**No rebuilds needed during development!**
+
+---
+
+## 🏗️ Tech Stack
+
+### Backend
+- **FastAPI** - Modern Python web framework
+- **SQLAlchemy 2.0** - Async ORM
+- **PostgreSQL 15** - Database
+- **Alembic** - Database migrations
+- **Pydantic v2** - Data validation
+- **JWT** - Authentication
+
+### Frontend
+- **React 18** - UI library
+- **TypeScript** - Type safety
+- **Vite** - Build tool (with hot reload)
+- **Mantine UI** - Component library
+- **Zustand** - State management
+- **React Query** - Server state management
+- **React Router** - Routing
+
+### Infrastructure
+- **Docker & Docker Compose** - Containerization
+- **Adminer** - Database admin UI
+
+---
+
+## 📦 Features
+
+- ✅ JWT Authentication with refresh tokens
+- ✅ Role-based access control (User, Captain, Moderator)
+- ✅ User profiles with 7 tabs
+- ✅ Team management (creation, join requests, captain control)
+- ✅ Competition system (registration, team members)
+- ✅ Certificate management
+- ✅ Moderator dashboard
+- ✅ Report generation (.docx)
+- ✅ File uploads (avatars, images, documents)
+- ✅ Activity logging
+- ✅ Feedback system (user complaints, platform feedback)
+
+---
+
+## 🛠️ Common Tasks
+
+### Database
 
 ```bash
-cd frontend
-npm install
-npm run dev
+# Run migrations
+docker compose exec backend alembic upgrade head
+
+# Check migration status
+docker compose exec backend alembic current
+
+# Create new migration
+docker compose exec backend alembic revision -m "description"
+
+# PostgreSQL shell
+docker compose exec postgres psql -U vkahub
+
+# Or use Adminer at http://localhost:8080
+# Server: postgres | User: vkahub | Pass: vkahub_password | DB: vkahub
 ```
 
-### Запуск тестов
+### Running Tests
 
 ```bash
-# Тесты Backend
-cd backend
-pytest
+# Backend tests
+docker compose exec backend pytest
 
-# Тесты Frontend
-cd frontend
-npm test
+# Frontend tests
+docker compose exec frontend npm test
 ```
 
-## Структура проекта
+### Accessing Containers
+
+```bash
+# Backend shell
+docker compose exec backend bash
+
+# Frontend shell
+docker compose exec frontend sh
+
+# View logs for specific service
+docker compose logs -f backend
+docker compose logs -f frontend
+docker compose logs -f postgres
+```
+
+---
+
+## 🐛 Troubleshooting
+
+### "Cannot connect to Docker daemon"
+
+**Solution**: Start Docker Desktop
+```bash
+# macOS: Open Docker Desktop from Applications
+# Linux: sudo systemctl start docker
+# Windows: Start Docker Desktop from Start Menu
+```
+
+### "Port already in use"
+
+**Solution**: Find and kill the process
+```bash
+lsof -i :5173  # or :8000, :5432, :8080
+kill -9 <PID>
+
+# Or stop old containers
+docker compose down
+```
+
+### Changes not appearing?
+
+**Solution**: Check you're in the right place
+```bash
+# Make sure you see hot reload in logs
+docker compose logs -f frontend
+docker compose logs -f backend
+
+# Try hard refresh in browser (Cmd+Shift+R)
+
+# Restart if needed
+docker compose restart frontend
+docker compose restart backend
+```
+
+### Database errors?
+
+**Solution**: Restart database or reset
+```bash
+# Restart database
+docker compose restart postgres
+
+# Run migrations
+docker compose exec backend alembic upgrade head
+
+# Nuclear option (DELETES ALL DATA)
+docker compose down -v
+./start.sh
+```
+
+### Frontend shows blank page?
+
+**Solution**: Check logs and port
+```bash
+# Check logs for errors
+docker compose logs frontend
+
+# Restart frontend
+docker compose restart frontend
+
+# Make sure you're on http://localhost:5173 (not 3000!)
+```
+
+---
+
+## 📂 Project Structure
 
 ```
 VKAHUB/
-├── backend/           # FastAPI бэкенд
+├── backend/                    # FastAPI backend
 │   ├── app/
-│   │   ├── config/          # Конфигурация
-│   │   ├── domain/          # Доменный слой (модели, сущности, репозитории)
-│   │   ├── use_cases/       # Бизнес-логика
-│   │   ├── infrastructure/  # Инфраструктура (БД, безопасность, хранилище)
-│   │   └── presentation/    # API слой (роутеры, DTO)
-│   ├── alembic/      # Миграции базы данных
-│   ├── tests/        # Тесты
-│   └── static/       # Статические файлы и загрузки
-├── frontend/         # React фронтенд
-│   └── src/
-│       ├── api/           # API вызовы
-│       ├── components/    # React компоненты
-│       ├── pages/         # Компоненты страниц
-│       ├── store/         # Zustand хранилища
-│       ├── types/         # TypeScript типы
-│       └── utils/         # Утилиты
-└── docker-compose.yml
+│   │   ├── domain/             # Models and repositories
+│   │   ├── use_cases/          # Business logic
+│   │   ├── infrastructure/     # DB, security, storage
+│   │   └── presentation/       # API endpoints, DTOs
+│   ├── alembic/                # Database migrations
+│   ├── tests/                  # Tests
+│   ├── Dockerfile              # Backend container
+│   └── .env                    # Config (auto-created)
+│
+├── frontend/                   # React frontend
+│   ├── src/
+│   │   ├── api/                # API clients
+│   │   ├── components/         # React components
+│   │   ├── pages/              # Page components
+│   │   ├── store/              # Zustand state
+│   │   └── types/              # TypeScript types
+│   ├── Dockerfile              # Frontend container
+│   └── .env                    # Config (auto-created)
+│
+├── docker-compose.yml          # Service configuration
+├── start.sh                    # 🚀 Start everything
+└── stop.sh                     # 🛑 Stop everything
 ```
 
-## Схема базы данных
+---
 
-- **users** - Учетные записи пользователей
-- **roles** - Доступные роли
-- **skills** - Доступные навыки
-- **user_roles** - Связи пользователь-роль
-- **user_skills** - Связи пользователь-навык
-- **moderators** - Назначение модераторов
-- **certificates** - Сертификаты пользователей
-- **teams** - Команды
-- **team_members** - Членство в командах
-- **team_join_requests** - Заявки на вступление
-- **competitions** - Соревнования
-- **competition_registrations** - Заявки на соревнования
-- **competition_team_members** - Участники соревнований
-- **competition_reports** - Отчеты капитанов
-- **moderator_reports** - Сгенерированные отчеты
-- **logs** - Журнал активности
+## ⚙️ Environment Variables
 
-## API Endpoints
+Auto-created from templates on first run. Edit if needed:
 
-### Аутентификация
-- `POST /api/auth/register` - Регистрация нового пользователя
-- `POST /api/auth/login` - Вход в систему
-- `POST /api/auth/refresh` - Обновление access токена
-- `POST /api/auth/logout` - Выход из системы
-- `POST /api/auth/recover` - Восстановление пароля
+### backend/.env
+```env
+DATABASE_URL=postgresql+asyncpg://vkahub:vkahub_password@postgres:5432/vkahub
+SECRET_KEY=your-secret-key-change-in-production
+ACCESS_TOKEN_EXPIRE_MINUTES=15
+REFRESH_TOKEN_EXPIRE_DAYS=7
+DEBUG=True
+CORS_ORIGINS=http://localhost:3000,http://localhost:5173
+```
 
-### Пользователи
-- `GET /api/users` - Список пользователей
-- `GET /api/users/{id}` - Детали пользователя
-- `PUT /api/users/{id}/profile` - Обновление профиля
-- `PUT /api/users/{id}/roles-skills` - Обновление ролей и навыков
+### frontend/.env
+```env
+VITE_API_URL=http://localhost:8000
+```
 
-### Команды
-- `GET /api/teams` - Список команд
-- `POST /api/teams` - Создание команды
-- `GET /api/teams/{id}` - Детали команды
-- `PUT /api/teams/{id}` - Обновление команды
-- `DELETE /api/teams/{id}` - Удаление команды (модератор)
-- `POST /api/teams/{id}/join` - Заявка на вступление
-- `POST /api/teams/{id}/requests/{request_id}/approve` - Одобрение заявки
+---
 
-### Соревнования
-- `GET /api/competitions` - Список соревнований
-- `POST /api/competitions` - Создание соревнования (модератор)
-- `GET /api/competitions/{id}` - Детали соревнования
-- `PUT /api/competitions/{id}` - Обновление соревнования (модератор)
-- `POST /api/competitions/{id}/apply` - Подача заявки на соревнование
+## 📊 Database Schema
 
-### Сертификаты
-- `GET /api/certificates` - Список сертификатов
-- `POST /api/certificates` - Загрузка сертификата
-- `PUT /api/certificates/{id}` - Обновление сертификата
-- `DELETE /api/certificates/{id}` - Удаление сертификата
+Key tables:
+- **users** - User accounts
+- **roles** - Available roles
+- **skills** - Available skills
+- **teams** - Teams
+- **team_members** - Team membership
+- **team_join_requests** - Join requests
+- **competitions** - Competitions
+- **competition_registrations** - Competition registrations
+- **certificates** - User certificates
+- **user_complaints** - User reports
+- **platform_complaints** - Platform feedback
+- **moderators** - Moderator assignments
+- **logs** - Activity logs
 
-### Отчеты
-- `POST /api/reports/captain` - Отправка отчета капитана
-- `GET /api/reports` - Список отчетов
+---
 
-### Модератор
-- `POST /api/moderator/assign` - Назначить модератора
-- `POST /api/moderator/remove` - Удалить модератора
-- `GET /api/moderator/list` - Список модераторов
-- `POST /api/moderator/reports/generate` - Генерация .docx отчета
+## 📝 API Endpoints
 
-## Вклад в проект
+Full API documentation: http://localhost:8000/docs
 
-1. Сделайте форк репозитория
-2. Создайте ветку для новой функции
-3. Зафиксируйте ваши изменения
-4. Отправьте изменения в ветку
-5. Создайте Pull Request
+### Key Endpoints
 
-## Лицензия
+#### Authentication
+- `POST /api/auth/register` - Register
+- `POST /api/auth/login` - Login
+- `POST /api/auth/refresh` - Refresh token
+
+#### Users
+- `GET /api/users` - List users
+- `GET /api/users/{id}` - User details
+- `PUT /api/users/{id}/profile` - Update profile
+
+#### Teams
+- `GET /api/teams` - List teams
+- `POST /api/teams` - Create team
+- `POST /api/teams/{id}/join` - Join request
+
+#### Competitions
+- `GET /api/competitions` - List competitions
+- `POST /api/competitions/{id}/apply` - Apply
+
+#### Feedback
+- `POST /api/users/complaints` - Report user
+- `POST /api/users/platform-complaints` - Platform feedback
+
+---
+
+## 🎯 Verification Checklist
+
+After running `./start.sh`, verify:
+
+- [ ] Frontend loads at http://localhost:5173
+- [ ] Backend API docs at http://localhost:8000/docs
+- [ ] Can register/login
+- [ ] Edit `frontend/src/App.tsx` → Browser refreshes
+- [ ] Edit `backend/app/main.py` → Server restarts (check logs)
+- [ ] No errors in logs: `docker compose logs -f`
+
+---
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes (hot reload shows them instantly!)
+4. Run tests: `docker compose exec backend pytest`
+5. Create a Pull Request
+
+---
+
+## 📜 License
 
 MIT License
 
-## Поддержка
+---
 
-По вопросам и проблемам создавайте issue на GitHub.
+## 💬 Support
+
+Questions or issues? Create an issue on GitHub.
+
+---
+
+**Happy coding! 🚀**

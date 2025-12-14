@@ -85,6 +85,32 @@ class CreateUserComplaintRequest(BaseModel):
 
 
 # ========================================
+# Platform Complaint DTOs
+# ========================================
+
+class PlatformComplaintResponse(BaseModel):
+    """Platform complaint response for frontend"""
+    id: int
+    user: str  # user login/name
+    category: str  # bug, feature_request, performance, ui_ux, security, other
+    title: str
+    description: str
+    status: str    # 'pending', 'resolved', 'rejected'
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class CreatePlatformComplaintRequest(BaseModel):
+    """Create platform complaint request"""
+    category: str  # bug, feature_request, performance, ui_ux, security, other
+    title: str
+    description: str
+
+
+# ========================================
 # Analytics DTOs
 # ========================================
 
