@@ -86,6 +86,7 @@ async def refresh_token(
     """Refresh access token using refresh token"""
     from app.infrastructure.security.jwt import decode_token, verify_token_type, create_access_token, create_refresh_token
     from app.domain.models.user import User
+    from app.infrastructure.repositories.moderator_repository_impl import ModeratorRepositoryImpl
     from sqlalchemy import select
 
     # Decode and validate refresh token
@@ -118,6 +119,10 @@ async def refresh_token(
     access_token = create_access_token(token_data)
     refresh_token = create_refresh_token(token_data)
 
+    # Check if user is moderator
+    moder_repo = ModeratorRepositoryImpl(db)
+    is_moder = await moder_repo.is_moderator(user_id=user.id)
+
     return {
         "access_token": access_token,
         "refresh_token": refresh_token,
@@ -131,7 +136,8 @@ async def refresh_token(
             "study_group": user.study_group,
             "position": user.position,
             "rank": user.rank,
-            "avatar_url": user.avatar_url
+            "avatar_url": user.avatar_url,
+            "is_moderator": is_moder
         }
     }
 

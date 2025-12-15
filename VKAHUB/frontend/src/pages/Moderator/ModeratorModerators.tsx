@@ -1,18 +1,19 @@
 import { useState } from 'react';
-import { Container, Title, Stack, TextInput, Table, Badge, Group, ActionIcon, Text, Modal, LoadingOverlay } from '@mantine/core';
+import { Container, Title, Stack, TextInput, Table, Badge, Group, ActionIcon, Text, Modal, LoadingOverlay, Select } from '@mantine/core';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { IconSearch, IconUserMinus, IconUserPlus, IconShieldCheck } from '@tabler/icons-react';
 import { VTBCard } from '../../components/common/VTBCard';
 import { VTBButton } from '../../components/common/VTBButton';
 import { notifications } from '@mantine/notifications';
-import { moderatorApi } from '../../api';
+import { moderatorApi, api } from '../../api';
 import { getErrorMessage } from '../../utils/errorHandler';
 
 export function ModeratorModerators() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [addModalOpened, setAddModalOpened] = useState(false);
-  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [userSearch, setUserSearch] = useState('');
 
   const { data: moderators, isLoading, error } = useQuery({
     queryKey: ['moderators-list'],
@@ -20,6 +21,15 @@ export function ModeratorModerators() {
       const response = await moderatorApi.getModerators();
       return response.items || [];
     },
+  });
+
+  const { data: allUsers } = useQuery({
+    queryKey: ['all-users-for-moderator'],
+    queryFn: async () => {
+      const response = await api.get('/api/moderator/users', { params: { limit: 1000 } });
+      return response.data.items || [];
+    },
+    enabled: addModalOpened,
   });
 
   const removeMutation = useMutation({
@@ -136,16 +146,45 @@ export function ModeratorModerators() {
           )}
         </VTBCard>
 
-        <Modal opened={addModalOpened} onClose={() => setAddModalOpened(false)} title="Добавить модератора">
+        <Modal
+          opened={addModalOpened}
+          onClose={() => {
+            setAddModalOpened(false);
+            setSelectedUserId(null);
+            setUserSearch('');
+          }}
+          title="Добавить модератора"
+          styles={{
+            header: { background: 'rgba(10, 31, 68, 0.95)', backdropFilter: 'blur(20px)' },
+            body: { background: 'rgba(10, 31, 68, 0.95)', backdropFilter: 'blur(20px)' },
+            title: { color: '#fff', fontWeight: 700 },
+          }}
+        >
           <Stack gap="md">
-            <Text size="sm" c="dimmed">Введите ID пользователя для назначения модератором</Text>
-            <TextInput
-              label="ID пользователя"
-              type="number"
-              value={selectedUserId || ''}
-              onChange={(e) => setSelectedUserId(Number(e.currentTarget.value))}
+            <Text size="sm" c="dimmed">Выберите пользователя для назначения модератором</Text>
+            <Select
+              label="Пользователь"
+              placeholder="Начните вводить имя или логин"
+              data={allUsers?.map((user: any) => ({
+                value: user.id.toString(),
+                label: `${user.login} - ${user.first_name} ${user.last_name}`,
+              })) || []}
+              value={selectedUserId}
+              onChange={setSelectedUserId}
+              searchable
+              searchValue={userSearch}
+              onSearchChange={setUserSearch}
+              nothingFoundMessage="Пользователь не найден"
+              classNames={{ input: 'glass-input' }}
+              styles={{
+                label: { color: '#ffffff', fontWeight: 600, marginBottom: 8 },
+              }}
             />
-            <VTBButton onClick={() => selectedUserId && addMutation.mutate(selectedUserId)} loading={addMutation.isPending}>
+            <VTBButton
+              onClick={() => selectedUserId && addMutation.mutate(Number(selectedUserId))}
+              loading={addMutation.isPending}
+              disabled={!selectedUserId}
+            >
               Назначить модератором
             </VTBButton>
           </Stack>

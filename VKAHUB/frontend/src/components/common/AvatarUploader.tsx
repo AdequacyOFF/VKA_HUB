@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Avatar, FileButton, Group, Stack, Text, ActionIcon } from '@mantine/core';
-import { IconCamera, IconX } from '@tabler/icons-react';
+import { Dropzone, IMAGE_MIME_TYPE, FileWithPath } from '@mantine/dropzone';
+import { IconCamera, IconX, IconUpload } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 
 interface AvatarUploaderProps {
@@ -21,9 +22,7 @@ export function AvatarUploader({
   const [loading, setLoading] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
 
-  const handleFileSelect = async (file: File | null) => {
-    if (!file) return;
-
+  const processFile = async (file: File) => {
     const maxSize = 5 * 1024 * 1024;
     if (file.size > maxSize) {
       notifications.show({
@@ -70,6 +69,17 @@ export function AvatarUploader({
     }
   };
 
+  const handleFileSelect = async (file: File | null) => {
+    if (!file) return;
+    await processFile(file);
+  };
+
+  const handleDrop = async (files: FileWithPath[]) => {
+    if (files.length > 0) {
+      await processFile(files[0]);
+    }
+  };
+
   const handleRemove = async () => {
     if (!onRemove) return;
 
@@ -95,9 +105,9 @@ export function AvatarUploader({
 
   const avatarSrc = preview || currentAvatar || undefined;
 
-  return (
-    <Stack align="center" gap="md">
-      <div style={{ position: 'relative' }}>
+  if (!editable) {
+    return (
+      <Stack align="center" gap="md">
         <Avatar
           src={avatarSrc}
           size={size}
@@ -108,56 +118,91 @@ export function AvatarUploader({
             boxShadow: '0 8px 32px rgba(0, 217, 255, 0.4)',
           }}
         />
+      </Stack>
+    );
+  }
 
-        {editable && (
-          <Group gap="xs" style={{ position: 'absolute', bottom: -10, right: -10 }}>
-            <FileButton onChange={handleFileSelect} accept="image/png,image/jpeg,image/jpg,image/webp">
-              {(props) => (
-                <ActionIcon
-                  {...props}
-                  size="lg"
-                  radius="xl"
-                  variant="filled"
-                  color="cyan"
-                  loading={loading}
-                  style={{
-                    background: 'linear-gradient(135deg, var(--vtb-cyan) 0%, var(--vtb-cyan-light) 100%)',
-                    border: '2px solid var(--vtb-blue-dark)',
-                  }}
-                >
-                  <IconCamera size={18} />
-                </ActionIcon>
-              )}
-            </FileButton>
+  return (
+    <Stack align="center" gap="md">
+      <div style={{ position: 'relative' }}>
+        <Dropzone
+          onDrop={handleDrop}
+          accept={IMAGE_MIME_TYPE}
+          maxSize={5 * 1024 * 1024}
+          maxFiles={1}
+          loading={loading}
+          disabled={loading}
+          style={{
+            padding: 0,
+            border: 'none',
+            background: 'transparent',
+            borderRadius: '50%',
+            cursor: loading ? 'not-allowed' : 'pointer',
+            width: size,
+            height: size,
+          }}
+        >
+          <Avatar
+            src={avatarSrc}
+            size={size}
+            radius="50%"
+            className="vtb-avatar"
+            style={{
+              border: '4px solid var(--vtb-cyan)',
+              boxShadow: '0 8px 32px rgba(0, 217, 255, 0.4)',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              transition: 'all 0.3s ease',
+            }}
+          />
+        </Dropzone>
 
-            {(currentAvatar || preview) && onRemove && (
+        <Group gap="xs" style={{ position: 'absolute', bottom: 0, right: 0 }}>
+          <FileButton onChange={handleFileSelect} accept="image/png,image/jpeg,image/jpg,image/webp">
+            {(props) => (
               <ActionIcon
+                {...props}
                 size="lg"
                 radius="xl"
                 variant="filled"
-                color="red"
-                onClick={handleRemove}
+                color="cyan"
                 loading={loading}
                 style={{
-                  border: '2px solid var(--vtb-blue-dark)',
+                  background: 'linear-gradient(135deg, var(--vtb-cyan) 0%, var(--vtb-cyan-light) 100%)',
+                  border: '3px solid var(--vtb-blue-dark)',
+                  boxShadow: '0 4px 12px rgba(0, 217, 255, 0.3)',
                 }}
               >
-                <IconX size={18} />
+                <IconCamera size={18} />
               </ActionIcon>
             )}
-          </Group>
-        )}
+          </FileButton>
+
+          {(currentAvatar || preview) && onRemove && (
+            <ActionIcon
+              size="lg"
+              radius="xl"
+              variant="filled"
+              color="red"
+              onClick={handleRemove}
+              loading={loading}
+              style={{
+                border: '3px solid var(--vtb-blue-dark)',
+                boxShadow: '0 4px 12px rgba(255, 0, 0, 0.3)',
+              }}
+            >
+              <IconX size={18} />
+            </ActionIcon>
+          )}
+        </Group>
       </div>
 
-      {editable && (
-        <Text size="sm" c="dimmed" ta="center">
-          Нажмите на иконку камеры, чтобы загрузить фото
-          <br />
-          <Text size="xs" span c="dimmed">
-            Макс. 5 МБ, форматы: JPG, PNG, WEBP
-          </Text>
+      <Text size="sm" c="dimmed" ta="center">
+        Нажмите или перетащите изображение на аватар
+        <br />
+        <Text size="xs" span c="dimmed">
+          Макс. 5 МБ, форматы: JPG, PNG, WEBP
         </Text>
-      )}
+      </Text>
     </Stack>
   );
 }

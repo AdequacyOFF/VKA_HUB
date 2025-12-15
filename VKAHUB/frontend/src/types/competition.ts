@@ -51,6 +51,7 @@ export interface Competition {
   website_url?: string;
   participants?: any[];
   results?: any[];
+  registrations?: Registration[];
 }
 
 export interface Application {
@@ -65,6 +66,12 @@ export interface Registration {
   status: string;
   result?: string;
   applied_at: string;
+  has_report?: boolean;
+  team?: {
+    id: number;
+    name: string;
+    captain_id: number;
+  };
 }
 
 export interface CreateCompetitionStageData {

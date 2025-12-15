@@ -18,6 +18,10 @@ from app.presentation.api.dtos.competition import (
 from app.infrastructure.repositories.competition_repository_impl import CompetitionRepositoryImpl
 from app.infrastructure.repositories.team_repository_impl import TeamRepositoryImpl
 from app.domain.models.competition import Competition
+from app.domain.models.competition_report import CompetitionReport
+from app.domain.models.competition_registration import CompetitionRegistration
+from pydantic import BaseModel, Field
+from datetime import datetime
 
 router = APIRouter(prefix="/api/competitions", tags=["Competitions"])
 
@@ -260,3 +264,317 @@ async def apply_to_competition(
         "registration_id": registration.id,
         "team_member_count": member_count
     }
+
+
+# ===== Competition Report DTOs =====
+class SubmitCompetitionReportRequest(BaseModel):
+    """Request to submit competition report"""
+    git_link: str = Field(..., description="Link to git repository")
+    presentation_url: str = Field(..., description="PDF or PowerPoint presentation URL")
+    brief_summary: str = Field(..., min_length=50, description="Brief summary of the competition experience")
+    placement: Optional[int] = Field(None, ge=1, description="Competition placement (1st, 2nd, 3rd, etc.)")
+    technologies_used: Optional[str] = None
+    individual_contributions: Optional[str] = None
+    team_evaluation: Optional[str] = None
+    problems_faced: Optional[str] = None
+
+
+class CompetitionReportResponse(BaseModel):
+    """Response for competition report"""
+    id: int
+    registration_id: int
+    team_name: str
+    competition_name: str
+    git_link: str
+    presentation_url: str
+    brief_summary: str
+    placement: Optional[int]
+    technologies_used: Optional[str]
+    individual_contributions: Optional[str]
+    team_evaluation: Optional[str]
+    problems_faced: Optional[str]
+    submitted_by: int
+    submitted_at: datetime
+
+
+# ===== Competition Report Endpoints =====
+
+@router.post("/{competition_id}/registrations/{registration_id}/report")
+async def submit_competition_report(
+    competition_id: int,
+    registration_id: int,
+    request: SubmitCompetitionReportRequest,
+    current_user = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Submit competition report (team captain only)"""
+    from sqlalchemy import select
+
+    # Get registration
+    result = await db.execute(
+        select(CompetitionRegistration)
+        .where(CompetitionRegistration.id == registration_id)
+        .where(CompetitionRegistration.competition_id == competition_id)
+    )
+    registration = result.scalar_one_or_none()
+
+    if not registration:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Registration not found"
+        )
+
+    # Get team
+    team_repo = TeamRepositoryImpl(db)
+    team = await team_repo.get_by_id(registration.team_id)
+
+    # Verify captain
+    if team.captain_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only team captain can submit competition reports"
+        )
+
+    # Check if report already exists
+    existing_report = await db.execute(
+        select(CompetitionReport).where(CompetitionReport.registration_id == registration_id)
+    )
+    if existing_report.scalar_one_or_none():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Report already submitted for this registration"
+        )
+
+    # Create report
+    report = CompetitionReport(
+        registration_id=registration_id,
+        git_link=request.git_link,
+        presentation_url=request.presentation_url,
+        brief_summary=request.brief_summary,
+        placement=request.placement,
+        technologies_used=request.technologies_used,
+        individual_contributions=request.individual_contributions,
+        team_evaluation=request.team_evaluation,
+        problems_faced=request.problems_faced,
+        submitted_by=current_user.id
+    )
+
+    db.add(report)
+    await db.commit()
+    await db.refresh(report)
+
+    return {
+        "message": "Report submitted successfully",
+        "report_id": report.id
+    }
+
+
+@router.get("/{competition_id}/reports")
+async def get_competition_reports(
+    competition_id: int,
+    current_user = Depends(require_moderator),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get all reports for a competition (moderator only)"""
+    from sqlalchemy import select
+
+    try:
+        # Verify competition exists
+        competition_repo = CompetitionRepositoryImpl(db)
+        competition = await competition_repo.get_by_id(competition_id)
+        if not competition:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Competition not found"
+            )
+
+        # Get all reports for this competition
+        result = await db.execute(
+            select(CompetitionReport, CompetitionRegistration, Competition)
+            .join(CompetitionRegistration, CompetitionReport.registration_id == CompetitionRegistration.id)
+            .join(Competition, CompetitionRegistration.competition_id == Competition.id)
+            .where(Competition.id == competition_id)
+        )
+
+        reports_data = result.all()
+
+        reports = []
+        team_repo = TeamRepositoryImpl(db)
+
+        for report, registration, comp in reports_data:
+            try:
+                team = await team_repo.get_by_id(registration.team_id)
+                team_name = team.name if team else "Unknown"
+            except Exception as e:
+                team_name = "Unknown"
+
+            reports.append(CompetitionReportResponse(
+                id=report.id,
+                registration_id=report.registration_id,
+                team_name=team_name,
+                competition_name=comp.name,
+                git_link=report.git_link,
+                presentation_url=report.presentation_url,
+                brief_summary=report.brief_summary,
+                placement=report.placement,
+                technologies_used=report.technologies_used,
+                individual_contributions=report.individual_contributions,
+                team_evaluation=report.team_evaluation,
+                problems_faced=report.problems_faced,
+                submitted_by=report.submitted_by,
+                submitted_at=report.submitted_at
+            ))
+
+        return {
+            "total": len(reports),
+            "competition_name": competition.name,
+            "reports": reports
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error fetching competition reports: {str(e)}"
+        )
+
+
+@router.get("/my-reports")
+async def get_my_team_reports(
+    current_user = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get reports for teams where current user is captain"""
+    from sqlalchemy import select
+
+    team_repo = TeamRepositoryImpl(db)
+    teams = await team_repo.get_teams_by_captain(current_user.id)
+
+    all_reports = []
+    for team in teams:
+        # Get registrations for this team
+        result = await db.execute(
+            select(CompetitionReport, CompetitionRegistration, Competition)
+            .join(CompetitionRegistration, CompetitionReport.registration_id == CompetitionRegistration.id)
+            .join(Competition, CompetitionRegistration.competition_id == Competition.id)
+            .where(CompetitionRegistration.team_id == team.id)
+        )
+
+        reports_data = result.all()
+        for report, registration, comp in reports_data:
+            all_reports.append(CompetitionReportResponse(
+                id=report.id,
+                registration_id=report.registration_id,
+                team_name=team.name,
+                competition_name=comp.name,
+                git_link=report.git_link,
+                presentation_url=report.presentation_url,
+                brief_summary=report.brief_summary,
+                placement=report.placement,
+                technologies_used=report.technologies_used,
+                individual_contributions=report.individual_contributions,
+                team_evaluation=report.team_evaluation,
+                problems_faced=report.problems_faced,
+                submitted_by=report.submitted_by,
+                submitted_at=report.submitted_at
+            ))
+
+    return {
+        "total": len(all_reports),
+        "reports": all_reports
+    }
+
+
+@router.get("/{competition_id}/reports/generate")
+async def generate_competition_report(
+    competition_id: int,
+    current_user = Depends(require_moderator),
+    db: AsyncSession = Depends(get_db)
+):
+    """Generate downloadable competition report (moderator only)"""
+    from sqlalchemy import select
+    from fastapi.responses import StreamingResponse
+    import io
+
+    try:
+        # Verify competition exists
+        competition_repo = CompetitionRepositoryImpl(db)
+        competition = await competition_repo.get_by_id(competition_id)
+        if not competition:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Competition not found"
+            )
+
+        # Get all reports for this competition
+        result = await db.execute(
+            select(CompetitionReport, CompetitionRegistration)
+            .join(CompetitionRegistration, CompetitionReport.registration_id == CompetitionRegistration.id)
+            .where(CompetitionRegistration.competition_id == competition_id)
+        )
+
+        reports_data = result.all()
+
+        # Create a simple text report (in production, use python-docx for Word documents)
+        report_content = f"""
+ОТЧЕТ ПО СОРЕВНОВАНИЮ
+{'=' * 80}
+
+Название: {competition.name}
+Тип: {competition.type}
+Дата проведения: {competition.start_date.strftime('%d.%m.%Y')} - {competition.end_date.strftime('%d.%m.%Y')}
+
+{'=' * 80}
+ОТЧЕТЫ КОМАНД
+{'=' * 80}
+
+"""
+
+        team_repo = TeamRepositoryImpl(db)
+
+        for idx, (report, registration) in enumerate(reports_data, 1):
+            team = await team_repo.get_by_id(registration.team_id)
+            team_name = team.name if team else "Unknown"
+
+            report_content += f"""
+{idx}. КОМАНДА: {team_name}
+{'-' * 80}
+Место: {report.placement if report.placement else 'Не указано'}
+Дата подачи: {report.submitted_at.strftime('%d.%m.%Y %H:%M')}
+
+Git репозиторий: {report.git_link}
+Презентация: {report.presentation_url}
+
+Краткое резюме:
+{report.brief_summary}
+
+"""
+            if report.technologies_used:
+                report_content += f"Использованные технологии:\n{report.technologies_used}\n\n"
+
+            if report.problems_faced:
+                report_content += f"Проблемы и сложности:\n{report.problems_faced}\n\n"
+
+            report_content += "\n"
+
+        # Convert to bytes
+        buffer = io.BytesIO()
+        buffer.write(report_content.encode('utf-8'))
+        buffer.seek(0)
+
+        # Return as downloadable file
+        return StreamingResponse(
+            buffer,
+            media_type="text/plain",
+            headers={
+                "Content-Disposition": f"attachment; filename=competition_report_{competition_id}_{datetime.now().strftime('%Y%m%d')}.txt"
+            }
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error generating report: {str(e)}"
+        )

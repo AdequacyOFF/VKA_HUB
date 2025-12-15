@@ -18,6 +18,18 @@
   --glass-shadow-hover: 0 12px 48px 0 rgba(0, 217, 255, 0.3);
   --glass-blur: 20px;
 
+  /* Dropdown/Menu Specific */
+  --glass-dropdown-bg: rgba(10, 31, 68, 0.95);
+  --glass-dropdown-border: rgba(0, 217, 255, 0.3);
+  --glass-option-hover: rgba(0, 217, 255, 0.1);
+  --glass-option-selected: rgba(0, 217, 255, 0.3);
+
+  /* Desktop Breakpoints */
+  --desktop-xxl: 1920px;
+  --desktop-xl: 1440px;
+  --desktop-lg: 1366px;
+  --desktop-md: 1024px;
+
   /* Typography */
   --font-heading: 'Segoe UI', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -373,4 +385,117 @@ body {
   .vtb-section {
     padding: 48px 0;
   }
+}
+
+/* Desktop-Optimized Responsive Design */
+@media (min-width: 1920px) {
+  .vtb-container {
+    max-width: 1600px;
+  }
+
+  .vtb-heading-hero {
+    font-size: 4.5rem;
+  }
+
+  .vtb-heading-section {
+    font-size: 3rem;
+  }
+
+  .vtb-section {
+    padding: 100px 0;
+  }
+}
+
+@media (max-width: 1440px) {
+  .vtb-container {
+    max-width: 1200px;
+  }
+
+  .vtb-heading-hero {
+    font-size: 3.5rem;
+  }
+
+  .vtb-section {
+    padding: 80px 0;
+  }
+}
+
+@media (max-width: 1366px) {
+  .vtb-container {
+    max-width: 1100px;
+    padding: 0 20px;
+  }
+
+  .vtb-heading-hero {
+    font-size: 3rem;
+  }
+
+  .vtb-heading-section {
+    font-size: 2.5rem;
+  }
+
+  .vtb-grid-3 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 1024px) {
+  .vtb-container {
+    max-width: 960px;
+    padding: 0 16px;
+  }
+
+  .vtb-heading-hero {
+    font-size: 2.5rem;
+  }
+
+  .vtb-heading-section {
+    font-size: 2rem;
+  }
+
+  .vtb-section {
+    padding: 60px 0;
+  }
+
+  .vtb-grid-2 {
+    gap: 24px;
+  }
+
+  .vtb-grid-3 {
+    gap: 20px;
+  }
+}
+
+/* Icon Fixes - Prevent Overlapping */
+.mantine-Button-root svg,
+.mantine-ActionIcon-root svg,
+.mantine-Tab-root svg {
+  flex-shrink: 0 !important;
+  margin-right: 0 !important;
+}
+
+.mantine-Button-section {
+  margin-right: 8px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+}
+
+/* Ensure icons don't merge with text */
+[class*="leftSection"],
+[class*="rightSection"] {
+  display: inline-flex !important;
+  align-items: center !important;
+  flex-shrink: 0 !important;
+}
+
+/* Fix for icon buttons */
+.mantine-ActionIcon-root {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* Ensure proper spacing in groups */
+.mantine-Group-root > * {
+  flex-shrink: 0 !important;
 }

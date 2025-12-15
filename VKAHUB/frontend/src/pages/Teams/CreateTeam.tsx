@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Container, Title, TextInput, Textarea, Stack, Box, Text, Grid, Group } from '@mantine/core';
+import { Container, Title, TextInput, Textarea, Stack, Box, Text, Grid, Group, rem } from '@mantine/core';
+import { Dropzone, IMAGE_MIME_TYPE, FileWithPath } from '@mantine/dropzone';
 import { useForm } from '@mantine/form';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
-import { IconUsers, IconPhoto, IconArrowLeft } from '@tabler/icons-react';
+import { IconUsers, IconPhoto, IconArrowLeft, IconUpload, IconX } from '@tabler/icons-react';
+import { ActionIcon } from '@mantine/core';
 import { VTBCard } from '../../components/common/VTBCard';
 import { VTBButton } from '../../components/common/VTBButton';
 import { teamsApi } from '../../api';
@@ -13,12 +15,12 @@ export function CreateTeam() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [imagePreview, setImagePreview] = useState<string>('');
+  const [imageFile, setImageFile] = useState<File | null>(null);
 
   const form = useForm({
     initialValues: {
       name: '',
       description: '',
-      image_url: '',
     },
     validate: {
       name: (value) => {
@@ -29,12 +31,6 @@ export function CreateTeam() {
       },
       description: (value) => {
         if (value && value.length > 500) return 'Описание не должно превышать 500 символов';
-        return null;
-      },
-      image_url: (value) => {
-        if (value && !/^https?:\/\/.+/.test(value)) {
-          return 'Введите корректный URL изображения';
-        }
         return null;
       },
     },
@@ -61,20 +57,38 @@ export function CreateTeam() {
     },
   });
 
-  const handleImageUrlChange = (value: string) => {
-    form.setFieldValue('image_url', value);
-    if (value && /^https?:\/\/.+/.test(value)) {
-      setImagePreview(value);
-    } else {
-      setImagePreview('');
+  const handleImageDrop = (files: FileWithPath[]) => {
+    const file = files[0];
+    if (file) {
+      setImageFile(file);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setImagePreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
     }
   };
 
+  const handleRemoveImage = () => {
+    setImageFile(null);
+    setImagePreview('');
+  };
+
   const handleSubmit = async (values: typeof form.values) => {
+    // For now, we'll use a placeholder URL or upload the image to a service
+    // In production, you'd upload the image to a cloud storage service first
+    let imageUrl = '';
+
+    if (imageFile) {
+      // TODO: Implement actual image upload to cloud storage (e.g., AWS S3, Cloudinary)
+      // For now, we'll use a base64 data URL (not recommended for production)
+      imageUrl = imagePreview;
+    }
+
     createTeamMutation.mutate({
       name: values.name,
       description: values.description || undefined,
-      image_url: values.image_url || undefined,
+      image_url: imageUrl || undefined,
     });
   };
 
@@ -104,40 +118,96 @@ export function CreateTeam() {
               <Grid.Col span={{ base: 12, md: 4 }}>
                 <Stack gap="md">
                   <Text fw={600} c="white" size="sm">
-                    Превью изображения
+                    Изображение команды
                   </Text>
                   {imagePreview ? (
-                    <img
-                      src={imagePreview}
-                      alt="Превью команды"
-                      style={{
-                        width: '100%',
-                        height: 250,
-                        objectFit: 'cover',
-                        borderRadius: 16,
-                        border: '2px solid var(--vtb-cyan)',
-                      }}
-                      onError={() => setImagePreview('')}
-                    />
+                    <Box pos="relative">
+                      <img
+                        src={imagePreview}
+                        alt="Превью команды"
+                        style={{
+                          width: '100%',
+                          height: 250,
+                          objectFit: 'cover',
+                          borderRadius: 16,
+                          border: '2px solid var(--vtb-cyan)',
+                        }}
+                      />
+                      <ActionIcon
+                        color="red"
+                        variant="filled"
+                        size="lg"
+                        radius="xl"
+                        onClick={handleRemoveImage}
+                        style={{
+                          position: 'absolute',
+                          top: 8,
+                          right: 8,
+                        }}
+                      >
+                        <IconX size={18} />
+                      </ActionIcon>
+                    </Box>
                   ) : (
-                    <div
+                    <Dropzone
+                      onDrop={handleImageDrop}
+                      onReject={(files) => {
+                        notifications.show({
+                          title: 'Ошибка',
+                          message: 'Файл должен быть изображением размером не более 5 МБ',
+                          color: 'red',
+                        });
+                      }}
+                      maxSize={5 * 1024 ** 2}
+                      accept={IMAGE_MIME_TYPE}
                       style={{
-                        width: '100%',
-                        height: 250,
+                        minHeight: 250,
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         background: 'linear-gradient(135deg, rgba(30, 76, 143, 0.5) 0%, rgba(37, 99, 184, 0.3) 100%)',
                         borderRadius: 16,
-                        border: '2px solid var(--vtb-cyan)',
+                        border: '2px dashed var(--vtb-cyan)',
+                        cursor: 'pointer',
                       }}
                     >
-                      <IconPhoto size={100} color="var(--vtb-cyan)" opacity={0.5} />
-                    </div>
+                      <Stack align="center" gap="md">
+                        <Dropzone.Accept>
+                          <IconUpload
+                            size={50}
+                            color="var(--vtb-cyan)"
+                            stroke={1.5}
+                          />
+                        </Dropzone.Accept>
+                        <Dropzone.Reject>
+                          <IconX
+                            size={50}
+                            color="red"
+                            stroke={1.5}
+                          />
+                        </Dropzone.Reject>
+                        <Dropzone.Idle>
+                          <IconPhoto
+                            size={50}
+                            color="var(--vtb-cyan)"
+                            opacity={0.5}
+                            stroke={1.5}
+                          />
+                        </Dropzone.Idle>
+                        <div>
+                          <Text size="sm" c="white" ta="center">
+                            Перетащите изображение сюда
+                          </Text>
+                          <Text size="xs" c="dimmed" ta="center" mt={4}>
+                            или нажмите для выбора файла
+                          </Text>
+                          <Text size="xs" c="dimmed" ta="center" mt={4}>
+                            Максимум 5 МБ
+                          </Text>
+                        </div>
+                      </Stack>
+                    </Dropzone>
                   )}
-                  <Text size="xs" c="dimmed" ta="center">
-                    Вставьте URL изображения команды
-                  </Text>
                 </Stack>
               </Grid.Col>
 
@@ -166,20 +236,6 @@ export function CreateTeam() {
                       label: { color: '#ffffff', fontWeight: 600, marginBottom: 8 },
                     }}
                     {...form.getInputProps('description')}
-                  />
-
-                  <TextInput
-                    label="Ссылка на изображение (необязательно)"
-                    placeholder="https://example.com/team-image.jpg"
-                    leftSection={<IconPhoto size={18} />}
-                    size="md"
-                    classNames={{ input: 'glass-input' }}
-                    styles={{
-                      label: { color: '#ffffff', fontWeight: 600, marginBottom: 8 },
-                    }}
-                    value={form.values.image_url}
-                    onChange={(e) => handleImageUrlChange(e.currentTarget.value)}
-                    error={form.errors.image_url}
                   />
 
                   <Box

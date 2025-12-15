@@ -9,7 +9,6 @@ import { RolesAndSkills } from './tabs/RolesAndSkills';
 import { TeamsHistory } from './tabs/TeamsHistory';
 import { MyTeam } from './tabs/MyTeam';
 import { CompetitionParticipation } from './tabs/CompetitionParticipation';
-import { ActivityHistory } from './tabs/ActivityHistory';
 import {
   IconUser,
   IconCertificate,
@@ -17,7 +16,6 @@ import {
   IconUsers,
   IconUserCircle,
   IconTrophy,
-  IconHistory,
 } from '@tabler/icons-react';
 
 export function Profile() {
@@ -104,9 +102,6 @@ export function Profile() {
           <Tabs.Tab value="competitions" leftSection={<IconTrophy size={18} />}>
             Соревнования
           </Tabs.Tab>
-          <Tabs.Tab value="activity" leftSection={<IconHistory size={18} />}>
-            Активность
-          </Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel value="general" pt="xl">
@@ -131,10 +126,6 @@ export function Profile() {
 
         <Tabs.Panel value="competitions" pt="xl">
           <CompetitionParticipation />
-        </Tabs.Panel>
-
-        <Tabs.Panel value="activity" pt="xl">
-          <ActivityHistory />
         </Tabs.Panel>
       </Tabs>
     </Container>

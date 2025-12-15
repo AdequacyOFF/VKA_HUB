@@ -171,8 +171,9 @@ export function ModeratorUsers() {
   // Мутации для блокировки/разблокировки
   const banMutation = useMutation({
     mutationFn: (userId: number) => api.post(`/api/moderator/users/${userId}/ban`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['moderator-users'] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['moderator-users'] });
+      await queryClient.refetchQueries({ queryKey: ['moderator-users'] });
       notifications.show({ title: 'Успех', message: 'Пользователь заблокирован', color: 'teal' });
     },
     onError: (error: any) => {
@@ -186,8 +187,9 @@ export function ModeratorUsers() {
 
   const unbanMutation = useMutation({
     mutationFn: (userId: number) => api.post(`/api/moderator/users/${userId}/unban`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['moderator-users'] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['moderator-users'] });
+      await queryClient.refetchQueries({ queryKey: ['moderator-users'] });
       notifications.show({ title: 'Успех', message: 'Пользователь разблокирован', color: 'teal' });
     },
     onError: (error: any) => {

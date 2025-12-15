@@ -86,6 +86,12 @@ export function CompetitionDetail() {
     ? dayjs().isBefore(dayjs(competition.registration_deadline))
     : true;
 
+  // Check if competition has ended and user is team captain who needs to submit report
+  const competitionEnded = dayjs().isAfter(dayjs(competition.end_date));
+  const userRegistration = competition.registrations?.find((reg: any) => reg.team?.captain_id === user?.id);
+  const isTeamCaptain = !!userRegistration;
+  const hasSubmittedReport = userRegistration?.has_report || false;
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'upcoming': return 'blue';
@@ -307,19 +313,68 @@ export function CompetitionDetail() {
                 )}
 
                 {isParticipant && (
-                  <Group
-                    p="md"
-                    style={{
-                      background: 'rgba(34, 197, 94, 0.1)',
-                      border: '1px solid #22c55e',
-                      borderRadius: 12,
-                    }}
-                  >
-                    <IconTrophy size={20} color="#22c55e" />
-                    <Text size="sm" c="#22c55e" fw={600}>
-                      Вы зарегистрированы на это соревнование
-                    </Text>
-                  </Group>
+                  <Stack gap="md">
+                    <Group
+                      p="md"
+                      style={{
+                        background: 'rgba(34, 197, 94, 0.1)',
+                        border: '1px solid #22c55e',
+                        borderRadius: 12,
+                      }}
+                    >
+                      <IconCheck size={20} color="#22c55e" />
+                      <Text size="sm" c="#22c55e" fw={600}>
+                        Вы зарегистрированы на это соревнование
+                      </Text>
+                    </Group>
+
+                    {/* Submit report button for team captains after competition ends */}
+                    {competitionEnded && isTeamCaptain && !hasSubmittedReport && (
+                      <Group
+                        p="md"
+                        style={{
+                          background: 'rgba(251, 191, 36, 0.1)',
+                          border: '1px solid #fbbf24',
+                          borderRadius: 12,
+                        }}
+                      >
+                        <Stack gap="sm" style={{ flex: 1 }}>
+                          <Group>
+                            <IconAlertCircle size={20} color="#fbbf24" />
+                            <Text size="sm" c="#fbbf24" fw={600}>
+                              Необходимо подать отчет о соревновании
+                            </Text>
+                          </Group>
+                          <Text size="xs" c="dimmed">
+                            У вас есть 5 дней после окончания соревнования для подачи отчета. После истечения срока доступ к функциям платформы будет ограничен.
+                          </Text>
+                          <VTBButton
+                            leftSection={<IconFileDescription size={18} />}
+                            onClick={() => navigate(`/competitions/${competition.id}/registrations/${userRegistration.id}/report`)}
+                            variant="secondary"
+                          >
+                            Подать отчет
+                          </VTBButton>
+                        </Stack>
+                      </Group>
+                    )}
+
+                    {competitionEnded && isTeamCaptain && hasSubmittedReport && (
+                      <Group
+                        p="md"
+                        style={{
+                          background: 'rgba(34, 197, 94, 0.1)',
+                          border: '1px solid #22c55e',
+                          borderRadius: 12,
+                        }}
+                      >
+                        <IconCheck size={20} color="#22c55e" />
+                        <Text size="sm" c="#22c55e" fw={600}>
+                          Отчет успешно подан
+                        </Text>
+                      </Group>
+                    )}
+                  </Stack>
                 )}
               </Stack>
             </Grid.Col>

@@ -1,14 +1,20 @@
+import { useState } from 'react';
 import { Container, Title, Stack, Text, Grid, Select, LoadingOverlay, Skeleton } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
 import { VTBCard } from '../../components/common/VTBCard';
-import { IconFileAnalytics } from '@tabler/icons-react';
-import { moderatorApi } from '../../api';
+import { VTBButton } from '../../components/common/VTBButton';
+import { IconFileAnalytics, IconDownload } from '@tabler/icons-react';
+import { moderatorApi, api } from '../../api';
 import { AnalyticsData } from '../../types';
+import { notifications } from '@mantine/notifications';
 
 const COLORS = ['#00D9FF', '#2563B8', '#1E4C8F', '#0A1F44', '#22c55e', '#fbbf24'];
 
 export function ModeratorAnalytics() {
+  const [selectedPeriod, setSelectedPeriod] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
+
   const { data: analytics, isLoading, error } = useQuery<AnalyticsData>({
     queryKey: ['moderator-analytics'],
     queryFn: async () => {
@@ -16,6 +22,48 @@ export function ModeratorAnalytics() {
       return response;
     },
   });
+
+  const handleExport = async () => {
+    if (!selectedPeriod) {
+      notifications.show({
+        title: 'Ошибка',
+        message: 'Выберите период для экспорта',
+        color: 'red',
+      });
+      return;
+    }
+
+    setExporting(true);
+    try {
+      const response = await api.get(`/api/moderator/analytics/export`, {
+        params: { period: selectedPeriod },
+        responseType: 'blob',
+      });
+
+      // Create download link
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `analytics_${selectedPeriod}_${Date.now()}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      notifications.show({
+        title: 'Успех',
+        message: 'Отчет успешно экспортирован',
+        color: 'teal',
+      });
+    } catch (error: any) {
+      notifications.show({
+        title: 'Ошибка',
+        message: error?.response?.data?.detail || 'Не удалось экспортировать отчет',
+        color: 'red',
+      });
+    } finally {
+      setExporting(false);
+    }
+  };
 
   return (
     <Container size="xl" py="md">
@@ -134,21 +182,37 @@ export function ModeratorAnalytics() {
 
           <Grid.Col span={{ base: 12, md: 6 }}>
             <VTBCard variant="secondary">
-              <Stack gap="lg" align="center" justify="center" style={{ height: 300 }}>
+              <Stack gap="lg" align="center" justify="center" style={{ minHeight: 300 }}>
                 <IconFileAnalytics size={80} color="var(--vtb-cyan)" opacity={0.5} />
-                <div style={{ textAlign: 'center' }}>
+                <div style={{ textAlign: 'center', width: '100%', maxWidth: 400 }}>
                   <Title order={3} c="white" mb="xs">Экспорт отчётов</Title>
                   <Text c="dimmed" mb="lg">Скачайте детализированные отчёты о деятельности платформы</Text>
-                  <Select
-                    placeholder="Выберите период"
-                    data={[
-                      { value: 'week', label: 'За неделю' },
-                      { value: 'month', label: 'За месяц' },
-                      { value: 'quarter', label: 'За квартал' },
-                      { value: 'year', label: 'За год' },
-                    ]}
-                    classNames={{ input: 'glass-input' }}
-                  />
+                  <Stack gap="md">
+                    <Select
+                      placeholder="Выберите период"
+                      data={[
+                        { value: 'week', label: 'За неделю' },
+                        { value: 'month', label: 'За месяц' },
+                        { value: 'quarter', label: 'За квартал' },
+                        { value: 'year', label: 'За год' },
+                      ]}
+                      value={selectedPeriod}
+                      onChange={setSelectedPeriod}
+                      classNames={{ input: 'glass-input' }}
+                      styles={{
+                        label: { color: '#ffffff', fontWeight: 600, marginBottom: 8 },
+                      }}
+                    />
+                    <VTBButton
+                      leftSection={<IconDownload size={18} />}
+                      onClick={handleExport}
+                      loading={exporting}
+                      disabled={!selectedPeriod || exporting}
+                      fullWidth
+                    >
+                      Экспортировать отчет
+                    </VTBButton>
+                  </Stack>
                 </div>
               </Stack>
             </VTBCard>

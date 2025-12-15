@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Container, Title, Stack, TextInput, Table, Badge, Group, ActionIcon, Text } from '@mantine/core';
+import { Container, Title, Stack, TextInput, Table, Badge, Group, ActionIcon, Text, Modal, Tooltip } from '@mantine/core';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { IconSearch, IconTrash, IconPlus } from '@tabler/icons-react';
+import { IconSearch, IconTrash, IconPlus, IconFileText, IconDownload } from '@tabler/icons-react';
 import { VTBCard } from '../../components/common/VTBCard';
 import { VTBButton } from '../../components/common/VTBButton';
 import { notifications } from '@mantine/notifications';
@@ -10,10 +10,22 @@ import { competitionsApi, api } from '../../api';
 import { Competition } from '../../types';
 import dayjs from 'dayjs';
 
+interface CompetitionReport {
+  id: number;
+  team_name: string;
+  git_link: string;
+  presentation_url: string;
+  brief_summary: string;
+  placement: number | null;
+  submitted_at: string;
+}
+
 export function ModeratorCompetitions() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
+  const [selectedCompId, setSelectedCompId] = useState<number | null>(null);
+  const [reportsModalOpened, setReportsModalOpened] = useState(false);
 
   const { data: competitions, isLoading, error } = useQuery<Competition[]>({
     queryKey: ['moderator-competitions'],
@@ -26,6 +38,16 @@ export function ModeratorCompetitions() {
         return [];
       }
     },
+  });
+
+  const { data: competitionReports, isLoading: reportsLoading } = useQuery<{ reports: CompetitionReport[], competition_name: string }>({
+    queryKey: ['competition-reports', selectedCompId],
+    queryFn: async () => {
+      if (!selectedCompId) return { reports: [], competition_name: '' };
+      const response = await api.get(`/api/competitions/${selectedCompId}/reports`);
+      return response.data;
+    },
+    enabled: !!selectedCompId && reportsModalOpened,
   });
 
   const deleteMutation = useMutation({
@@ -42,6 +64,48 @@ export function ModeratorCompetitions() {
       });
     },
   });
+
+  const handleViewReports = (compId: number) => {
+    setSelectedCompId(compId);
+    setReportsModalOpened(true);
+  };
+
+  const handleGenerateReport = async (compId: number) => {
+    try {
+      notifications.show({
+        title: 'Генерация отчета',
+        message: 'Формируем отчет по соревнованию...',
+        color: 'blue',
+        loading: true
+      });
+
+      // This would call an endpoint that generates a Word/PDF document
+      const response = await api.get(`/api/competitions/${compId}/reports/generate`, {
+        responseType: 'blob'
+      });
+
+      // Create download link
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `competition_report_${compId}_${Date.now()}.docx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      notifications.show({
+        title: 'Успех',
+        message: 'Отчет успешно сгенерирован',
+        color: 'teal'
+      });
+    } catch (error: any) {
+      notifications.show({
+        title: 'Ошибка',
+        message: error?.response?.data?.detail || 'Не удалось сгенерировать отчет',
+        color: 'red',
+      });
+    }
+  };
 
   // Safe array filtering
   const safeComps = Array.isArray(competitions) ? competitions : [];
@@ -93,29 +157,123 @@ export function ModeratorCompetitions() {
                   <Table.Th>Название</Table.Th>
                   <Table.Th>Тип</Table.Th>
                   <Table.Th>Статус</Table.Th>
-                  <Table.Th>Дата начала</Table.Th>
+                  <Table.Th>Регистрация до</Table.Th>
+                  <Table.Th>Начало</Table.Th>
+                  <Table.Th>Конец</Table.Th>
                   <Table.Th>Действия</Table.Th>
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
-                {filteredComps.map((comp) => (
-                  <Table.Tr key={comp.id}>
-                    <Table.Td>{comp.id}</Table.Td>
-                    <Table.Td>{comp.name}</Table.Td>
-                    <Table.Td><Badge color="cyan" variant="light">{comp.type}</Badge></Table.Td>
-                    <Table.Td><Badge color={comp.status === 'ongoing' ? 'green' : 'blue'} variant="light">{comp.status}</Badge></Table.Td>
-                    <Table.Td>{dayjs(comp.start_date).format('DD.MM.YYYY')}</Table.Td>
-                    <Table.Td>
-                      <ActionIcon variant="light" color="red" onClick={() => deleteMutation.mutate(comp.id)}>
-                        <IconTrash size={18} />
-                      </ActionIcon>
-                    </Table.Td>
-                  </Table.Tr>
-                ))}
+                {filteredComps.map((comp) => {
+                  const now = new Date();
+                  const startDate = new Date(comp.start_date);
+                  const endDate = new Date(comp.end_date);
+                  const regDeadline = new Date(comp.registration_deadline);
+
+                  let status = 'upcoming';
+                  let statusColor = 'blue';
+                  let statusText = 'Предстоит';
+
+                  if (now > endDate) {
+                    status = 'completed';
+                    statusColor = 'gray';
+                    statusText = 'Завершено';
+                  } else if (now >= startDate && now <= endDate) {
+                    status = 'ongoing';
+                    statusColor = 'green';
+                    statusText = 'Идет';
+                  } else if (now < regDeadline) {
+                    status = 'registration';
+                    statusColor = 'cyan';
+                    statusText = 'Регистрация';
+                  }
+
+                  return (
+                    <Table.Tr key={comp.id}>
+                      <Table.Td>{comp.id}</Table.Td>
+                      <Table.Td>{comp.name}</Table.Td>
+                      <Table.Td><Badge color="cyan" variant="light">{comp.type}</Badge></Table.Td>
+                      <Table.Td><Badge color={statusColor} variant="light">{statusText}</Badge></Table.Td>
+                      <Table.Td>{dayjs(comp.registration_deadline).format('DD.MM.YYYY')}</Table.Td>
+                      <Table.Td>{dayjs(comp.start_date).format('DD.MM.YYYY')}</Table.Td>
+                      <Table.Td>{dayjs(comp.end_date).format('DD.MM.YYYY')}</Table.Td>
+                      <Table.Td>
+                        <Group gap="xs">
+                          <Tooltip label="Просмотреть отчеты">
+                            <ActionIcon variant="light" color="cyan" onClick={() => handleViewReports(comp.id)}>
+                              <IconFileText size={18} />
+                            </ActionIcon>
+                          </Tooltip>
+                          <Tooltip label="Сгенерировать отчет">
+                            <ActionIcon variant="light" color="blue" onClick={() => handleGenerateReport(comp.id)}>
+                              <IconDownload size={18} />
+                            </ActionIcon>
+                          </Tooltip>
+                          <Tooltip label="Удалить">
+                            <ActionIcon variant="light" color="red" onClick={() => deleteMutation.mutate(comp.id)}>
+                              <IconTrash size={18} />
+                            </ActionIcon>
+                          </Tooltip>
+                        </Group>
+                      </Table.Td>
+                    </Table.Tr>
+                  );
+                })}
               </Table.Tbody>
             </Table>
           )}
         </VTBCard>
+
+        {/* Reports Modal */}
+        <Modal
+          opened={reportsModalOpened}
+          onClose={() => setReportsModalOpened(false)}
+          title={`Отчеты по соревнованию${competitionReports?.competition_name ? `: ${competitionReports.competition_name}` : ''}`}
+          size="xl"
+        >
+          {reportsLoading ? (
+            <Text c="white" ta="center">Загрузка...</Text>
+          ) : competitionReports?.reports.length === 0 ? (
+            <Text c="dimmed" ta="center">Отчеты еще не поданы</Text>
+          ) : (
+            <Stack gap="md">
+              {competitionReports?.reports.map((report) => (
+                <VTBCard key={report.id} variant="secondary">
+                  <Stack gap="sm">
+                    <Group justify="space-between">
+                      <Text fw={700} c="white" size="lg">{report.team_name}</Text>
+                      {report.placement && (
+                        <Badge size="lg" color="gold">{report.placement} место</Badge>
+                      )}
+                    </Group>
+                    <Text c="dimmed" size="sm">Подано: {dayjs(report.submitted_at).format('DD.MM.YYYY HH:mm')}</Text>
+                    <Text c="white">{report.brief_summary}</Text>
+                    <Group gap="md">
+                      <VTBButton
+                        size="sm"
+                        variant="secondary"
+                        component="a"
+                        href={report.git_link}
+                        target="_blank"
+                      >
+                        GitHub
+                      </VTBButton>
+                      <VTBButton
+                        size="sm"
+                        variant="secondary"
+                        component="a"
+                        href={report.presentation_url}
+                        target="_blank"
+                      >
+                        Презентация
+                      </VTBButton>
+                    </Group>
+                  </Stack>
+                </VTBCard>
+              ))}
+            </Stack>
+          )}
+        </Modal>
       </Stack>
     </Container>
   );

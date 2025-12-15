@@ -89,34 +89,9 @@ export function MultiSelectSkills({ customSkills = [], ...props }: MultiSelectSk
   return (
     <MultiSelect
       data={groupedSkills()}
-      searchable
-      clearable
       placeholder="Выберите навыки"
       maxDropdownHeight={400}
-      classNames={{
-        input: 'glass-input',
-      }}
       styles={{
-        pill: {
-          background: 'rgba(0, 217, 255, 0.2)',
-          color: 'var(--vtb-cyan)',
-          border: '1px solid var(--vtb-cyan)',
-        },
-        option: {
-          color: '#ffffff',
-          '&:hover': {
-            background: 'rgba(0, 217, 255, 0.1)',
-          },
-          '&[data-combobox-selected="true"]': {
-            background: 'rgba(0, 217, 255, 0.3)',
-            color: 'var(--vtb-cyan)',
-          },
-        },
-        dropdown: {
-          background: 'rgba(10, 31, 68, 0.95)',
-          backdropFilter: 'blur(20px)',
-          border: '1px solid rgba(0, 217, 255, 0.3)',
-        },
         groupLabel: {
           color: 'var(--vtb-cyan)',
           fontWeight: 600,

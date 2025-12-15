@@ -25,6 +25,7 @@ import { notifications } from '@mantine/notifications';
 import { IconTrash, IconPlus, IconUpload } from '@tabler/icons-react';
 import { useNavigate } from 'react-router-dom';
 import { competitionsApi } from '../../api/competitions';
+import { VTBCard } from '../../components/common/VTBCard';
 
 interface Stage {
   stage_number: number;
@@ -351,10 +352,10 @@ export default function CreateCompetition() {
             </Card>
 
             {/* Stages */}
-            <Card withBorder>
+            <VTBCard variant="secondary">
               <Group justify="space-between" mb="md">
-                <Title order={4}>Этапы соревнования</Title>
-                <Button leftSection={<IconPlus size={16} />} onClick={addStage} size="sm">
+                <Title order={4} c="white">Этапы соревнования</Title>
+                <Button leftSection={<IconPlus size={16} />} onClick={addStage} size="sm" variant="light" color="cyan">
                   Добавить этап
                 </Button>
               </Group>
@@ -366,10 +367,10 @@ export default function CreateCompetition() {
               ) : (
                 <Stack gap="md">
                   {stages.map((stage, index) => (
-                    <Card key={index} withBorder bg="gray.0">
+                    <VTBCard key={index} variant="primary">
                       <Group justify="space-between" mb="sm">
-                        <Badge>Этап {stage.stage_number}</Badge>
-                        <ActionIcon color="red" onClick={() => removeStage(index)}>
+                        <Badge color="cyan" variant="light">Этап {stage.stage_number}</Badge>
+                        <ActionIcon color="red" variant="light" onClick={() => removeStage(index)}>
                           <IconTrash size={16} />
                         </ActionIcon>
                       </Group>
@@ -382,6 +383,8 @@ export default function CreateCompetition() {
                             value={stage.name}
                             onChange={(e) => updateStage(index, 'name', e.target.value)}
                             required
+                            classNames={{ input: 'glass-input' }}
+                            styles={{ label: { color: '#ffffff', fontWeight: 600, marginBottom: 8 } }}
                           />
                         </Grid.Col>
 
@@ -392,6 +395,8 @@ export default function CreateCompetition() {
                             value={stage.description}
                             onChange={(e) => updateStage(index, 'description', e.target.value)}
                             minRows={2}
+                            classNames={{ input: 'glass-input' }}
+                            styles={{ label: { color: '#ffffff', fontWeight: 600, marginBottom: 8 } }}
                           />
                         </Grid.Col>
 
@@ -402,6 +407,8 @@ export default function CreateCompetition() {
                             value={stage.start_date}
                             onChange={(value) => updateStage(index, 'start_date', value)}
                             required
+                            classNames={{ input: 'glass-input' }}
+                            styles={{ label: { color: '#ffffff', fontWeight: 600, marginBottom: 8 } }}
                           />
                         </Grid.Col>
 
@@ -412,21 +419,23 @@ export default function CreateCompetition() {
                             value={stage.end_date}
                             onChange={(value) => updateStage(index, 'end_date', value)}
                             required
+                            classNames={{ input: 'glass-input' }}
+                            styles={{ label: { color: '#ffffff', fontWeight: 600, marginBottom: 8 } }}
                           />
                         </Grid.Col>
                       </Grid>
-                    </Card>
+                    </VTBCard>
                   ))}
                 </Stack>
               )}
-            </Card>
+            </VTBCard>
 
             {/* Cases (for Hackathons only) */}
             {form.values.type === 'hackathon' && (
-              <Card withBorder>
+              <VTBCard variant="secondary">
                 <Group justify="space-between" mb="md">
-                  <Title order={4}>Кейсы хакатона</Title>
-                  <Button leftSection={<IconPlus size={16} />} onClick={addCase} size="sm">
+                  <Title order={4} c="white">Кейсы хакатона</Title>
+                  <Button leftSection={<IconPlus size={16} />} onClick={addCase} size="sm" variant="light" color="cyan">
                     Добавить кейс
                   </Button>
                 </Group>
@@ -438,10 +447,10 @@ export default function CreateCompetition() {
                 ) : (
                   <Stack gap="md">
                     {cases.map((caseItem, index) => (
-                      <Card key={index} withBorder bg="blue.0">
+                      <VTBCard key={index} variant="primary">
                         <Group justify="space-between" mb="sm">
-                          <Badge color="blue">Кейс {caseItem.case_number}</Badge>
-                          <ActionIcon color="red" onClick={() => removeCase(index)}>
+                          <Badge color="cyan" variant="light">Кейс {caseItem.case_number}</Badge>
+                          <ActionIcon color="red" variant="light" onClick={() => removeCase(index)}>
                             <IconTrash size={16} />
                           </ActionIcon>
                         </Group>
@@ -454,6 +463,8 @@ export default function CreateCompetition() {
                               value={caseItem.title}
                               onChange={(e) => updateCase(index, 'title', e.target.value)}
                               required
+                              classNames={{ input: 'glass-input' }}
+                              styles={{ label: { color: '#ffffff', fontWeight: 600, marginBottom: 8 } }}
                             />
                           </Grid.Col>
 
@@ -465,6 +476,8 @@ export default function CreateCompetition() {
                               onChange={(e) => updateCase(index, 'description', e.target.value)}
                               minRows={3}
                               required
+                              classNames={{ input: 'glass-input' }}
+                              styles={{ label: { color: '#ffffff', fontWeight: 600, marginBottom: 8 } }}
                             />
                           </Grid.Col>
 
@@ -477,14 +490,16 @@ export default function CreateCompetition() {
                               onChange={(value) => updateCase(index, 'knowledge_stack', value)}
                               searchable
                               required
+                              classNames={{ input: 'glass-input' }}
+                              styles={{ label: { color: '#ffffff', fontWeight: 600, marginBottom: 8 } }}
                             />
                           </Grid.Col>
                         </Grid>
-                      </Card>
+                      </VTBCard>
                     ))}
                   </Stack>
                 )}
-              </Card>
+              </VTBCard>
             )}
 
             {/* Submit Buttons */}

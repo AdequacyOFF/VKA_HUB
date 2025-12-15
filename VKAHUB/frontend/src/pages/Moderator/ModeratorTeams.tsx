@@ -9,6 +9,11 @@ import { Team } from '../../types';
 
 // Extended team type with moderator-specific fields
 interface TeamWithMetadata extends Team {
+  captain?: {
+    id: number;
+    first_name: string;
+    last_name: string;
+  };
   captain_name?: string;
   member_count?: number;
 }
@@ -94,27 +99,37 @@ export function ModeratorTeams() {
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
-                {filteredTeams.map((team) => (
-                  <Table.Tr key={team.id}>
-                    <Table.Td>{team.id}</Table.Td>
-                    <Table.Td>{team.name}</Table.Td>
-                    <Table.Td>{team.captain_name || '—'}</Table.Td>
-                    <Table.Td>
-                      <Badge leftSection={<IconUsers size={14} />} color="cyan" variant="light">
-                        {team.member_count || 0}
-                      </Badge>
-                    </Table.Td>
-                    <Table.Td>
-                      <ActionIcon
-                        variant="light"
-                        color="red"
-                        onClick={() => deleteMutation.mutate(team.id)}
-                      >
-                        <IconTrash size={18} />
-                      </ActionIcon>
-                    </Table.Td>
-                  </Table.Tr>
-                ))}
+                {filteredTeams.map((team) => {
+                  // Extract captain name from captain object
+                  const captainName = team.captain
+                    ? `${team.captain.first_name || ''} ${team.captain.last_name || ''}`.trim()
+                    : '—';
+
+                  // Count members from members array
+                  const memberCount = team.members?.length || 0;
+
+                  return (
+                    <Table.Tr key={team.id}>
+                      <Table.Td>{team.id}</Table.Td>
+                      <Table.Td>{team.name}</Table.Td>
+                      <Table.Td>{captainName}</Table.Td>
+                      <Table.Td>
+                        <Badge leftSection={<IconUsers size={14} />} color="cyan" variant="light">
+                          {memberCount}
+                        </Badge>
+                      </Table.Td>
+                      <Table.Td>
+                        <ActionIcon
+                          variant="light"
+                          color="red"
+                          onClick={() => deleteMutation.mutate(team.id)}
+                        >
+                          <IconTrash size={18} />
+                        </ActionIcon>
+                      </Table.Td>
+                    </Table.Tr>
+                  );
+                })}
               </Table.Tbody>
             </Table>
           )}
