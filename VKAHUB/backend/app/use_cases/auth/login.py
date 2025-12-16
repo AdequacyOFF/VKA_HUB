@@ -39,6 +39,13 @@ class LoginUseCase:
                 detail="Неверный логин или пароль"
             )
 
+        # Check if user is banned
+        if user.is_banned:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Вы заблокированы. Пожалуйста, свяжитесь с модератором для входа."
+            )
+
         # Verify password
         if not verify_password(password, user.password_hash):
             raise HTTPException(

@@ -58,6 +58,7 @@ class UserResponse(BaseModel):
     teams: Optional[List[TeamInfo]] = None
     competitions: Optional[List[CompetitionInfo]] = None
     is_moderator: bool | None = None
+    is_banned: bool = False
     control_question: Optional[str] = None
     
 

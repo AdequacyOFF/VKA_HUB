@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Container, Title, Stack, TextInput, Table, Badge, Group, ActionIcon, Text, Modal, Tooltip } from '@mantine/core';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { IconSearch, IconTrash, IconPlus, IconFileText, IconDownload } from '@tabler/icons-react';
+import { IconSearch, IconTrash, IconPlus, IconFileText } from '@tabler/icons-react';
 import { VTBCard } from '../../components/common/VTBCard';
 import { VTBButton } from '../../components/common/VTBButton';
 import { notifications } from '@mantine/notifications';
@@ -68,43 +68,6 @@ export function ModeratorCompetitions() {
   const handleViewReports = (compId: number) => {
     setSelectedCompId(compId);
     setReportsModalOpened(true);
-  };
-
-  const handleGenerateReport = async (compId: number) => {
-    try {
-      notifications.show({
-        title: 'Генерация отчета',
-        message: 'Формируем отчет по соревнованию...',
-        color: 'blue',
-        loading: true
-      });
-
-      // This would call an endpoint that generates a Word/PDF document
-      const response = await api.get(`/api/competitions/${compId}/reports/generate`, {
-        responseType: 'blob'
-      });
-
-      // Create download link
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `competition_report_${compId}_${Date.now()}.docx`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-
-      notifications.show({
-        title: 'Успех',
-        message: 'Отчет успешно сгенерирован',
-        color: 'teal'
-      });
-    } catch (error: any) {
-      notifications.show({
-        title: 'Ошибка',
-        message: error?.response?.data?.detail || 'Не удалось сгенерировать отчет',
-        color: 'red',
-      });
-    }
   };
 
   // Safe array filtering
@@ -202,11 +165,6 @@ export function ModeratorCompetitions() {
                           <Tooltip label="Просмотреть отчеты">
                             <ActionIcon variant="light" color="cyan" onClick={() => handleViewReports(comp.id)}>
                               <IconFileText size={18} />
-                            </ActionIcon>
-                          </Tooltip>
-                          <Tooltip label="Сгенерировать отчет">
-                            <ActionIcon variant="light" color="blue" onClick={() => handleGenerateReport(comp.id)}>
-                              <IconDownload size={18} />
                             </ActionIcon>
                           </Tooltip>
                           <Tooltip label="Удалить">

@@ -6,16 +6,16 @@ import { getLastProfileTab, clearLastProfileTab } from '../../utils/navigation';
 import { GeneralInformation } from './tabs/GeneralInformation';
 import { Certificates } from './tabs/Certificates';
 import { RolesAndSkills } from './tabs/RolesAndSkills';
-import { TeamsHistory } from './tabs/TeamsHistory';
 import { MyTeam } from './tabs/MyTeam';
 import { CompetitionParticipation } from './tabs/CompetitionParticipation';
+import { TeamRequests } from './tabs/TeamRequests';
 import {
   IconUser,
   IconCertificate,
   IconBriefcase,
-  IconUsers,
   IconUserCircle,
   IconTrophy,
+  IconMailFast,
 } from '@tabler/icons-react';
 
 export function Profile() {
@@ -93,14 +93,14 @@ export function Profile() {
           <Tabs.Tab value="roles" leftSection={<IconBriefcase size={18} />}>
             Роли и навыки
           </Tabs.Tab>
-          <Tabs.Tab value="teams-history" leftSection={<IconUsers size={18} />}>
-            История команд
-          </Tabs.Tab>
           <Tabs.Tab value="my-team" leftSection={<IconUserCircle size={18} />}>
             Мои команды
           </Tabs.Tab>
           <Tabs.Tab value="competitions" leftSection={<IconTrophy size={18} />}>
             Соревнования
+          </Tabs.Tab>
+          <Tabs.Tab value="requests" leftSection={<IconMailFast size={18} />}>
+            Запросы
           </Tabs.Tab>
         </Tabs.List>
 
@@ -116,16 +116,16 @@ export function Profile() {
           <RolesAndSkills />
         </Tabs.Panel>
 
-        <Tabs.Panel value="teams-history" pt="xl">
-          <TeamsHistory />
-        </Tabs.Panel>
-
         <Tabs.Panel value="my-team" pt="xl">
           <MyTeam />
         </Tabs.Panel>
 
         <Tabs.Panel value="competitions" pt="xl">
           <CompetitionParticipation />
+        </Tabs.Panel>
+
+        <Tabs.Panel value="requests" pt="xl">
+          <TeamRequests />
         </Tabs.Panel>
       </Tabs>
     </Container>

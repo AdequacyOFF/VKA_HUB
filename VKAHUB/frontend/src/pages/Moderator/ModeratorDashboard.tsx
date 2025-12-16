@@ -9,6 +9,7 @@ import {
   IconClock,
   IconTrendingUp,
   IconActivity,
+  IconX,
 } from '@tabler/icons-react';
 import { VTBCard } from '../../components/common/VTBCard';
 import { moderatorApi } from '../../api/moderator';
@@ -20,6 +21,10 @@ interface PlatformStats {
   activeCompetitions: number;
   pendingReports: number;
   resolvedReports: number;
+  rejectedReports: number;
+  pendingFeedback: number;
+  resolvedFeedback: number;
+  rejectedFeedback: number;
   newUsersThisMonth: number;
   newTeamsThisMonth: number;
   userGrowth: number;
@@ -38,6 +43,10 @@ export function ModeratorDashboard() {
         activeCompetitions: response.active_competitions ?? 0,
         pendingReports: response.pending_reports ?? 0,
         resolvedReports: response.resolved_reports ?? 0,
+        rejectedReports: response.rejected_reports ?? 0,
+        pendingFeedback: response.pending_feedback ?? 0,
+        resolvedFeedback: response.resolved_feedback ?? 0,
+        rejectedFeedback: response.rejected_feedback ?? 0,
         newUsersThisMonth: response.new_users_this_month ?? 0,
         newTeamsThisMonth: response.new_teams_this_month ?? 0,
         userGrowth: response.user_growth ?? 0,
@@ -250,13 +259,63 @@ export function ModeratorDashboard() {
               </Stack>
             </VTBCard>
           </Grid.Col>
+
+          <Grid.Col span={{ base: 12, md: 6 }}>
+            <VTBCard variant="secondary">
+              <Stack gap="lg">
+                <Title order={3} c="white">Обратная связь</Title>
+
+                <Stack gap="md">
+                  <div
+                    style={{
+                      padding: 16,
+                      background: 'rgba(59, 130, 246, 0.1)',
+                      border: '1px solid #3b82f6',
+                      borderRadius: 12,
+                    }}
+                  >
+                    <Group justify="space-between">
+                      <Group>
+                        <IconClock size={24} color="#3b82f6" />
+                        <div>
+                          <Text fw={600} c="white">Ожидают ответа</Text>
+                          <Text size="sm" c="dimmed">Требуют внимания</Text>
+                        </div>
+                      </Group>
+                      <Text size="xl" fw={700} c="#3b82f6">{stats.pendingFeedback}</Text>
+                    </Group>
+                  </div>
+
+                  <div
+                    style={{
+                      padding: 16,
+                      background: 'rgba(34, 197, 94, 0.1)',
+                      border: '1px solid #22c55e',
+                      borderRadius: 12,
+                    }}
+                  >
+                    <Group justify="space-between">
+                      <Group>
+                        <IconCheck size={24} color="#22c55e" />
+                        <div>
+                          <Text fw={600} c="white">Обработаны</Text>
+                          <Text size="sm" c="dimmed">Всего за всё время</Text>
+                        </div>
+                      </Group>
+                      <Text size="xl" fw={700} c="#22c55e">{stats.resolvedFeedback}</Text>
+                    </Group>
+                  </div>
+                </Stack>
+              </Stack>
+            </VTBCard>
+          </Grid.Col>
         </Grid>
 
         <VTBCard variant="primary">
           <Stack gap="md">
             <Title order={3} c="white">Быстрые действия</Title>
             <Grid gutter="md">
-              <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
+              <Grid.Col span={{ base: 12, sm: 6, md: 4 }}>
                 <div
                   className="glass-card"
                   style={{
@@ -271,22 +330,7 @@ export function ModeratorDashboard() {
                 </div>
               </Grid.Col>
 
-              <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
-                <div
-                  className="glass-card"
-                  style={{
-                    padding: 16,
-                    cursor: 'pointer',
-                    textAlign: 'center',
-                  }}
-                  onClick={() => window.location.href = '/moderator/teams'}
-                >
-                  <IconUsersGroup size={40} color="var(--vtb-cyan)" style={{ margin: '0 auto 8px' }} />
-                  <Text c="white" fw={600}>Управление командами</Text>
-                </div>
-              </Grid.Col>
-
-              <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
+              <Grid.Col span={{ base: 12, sm: 6, md: 4 }}>
                 <div
                   className="glass-card"
                   style={{
@@ -301,7 +345,7 @@ export function ModeratorDashboard() {
                 </div>
               </Grid.Col>
 
-              <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
+              <Grid.Col span={{ base: 12, sm: 6, md: 4 }}>
                 <div
                   className="glass-card"
                   style={{

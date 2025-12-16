@@ -5,7 +5,6 @@ import { useDisclosure } from '@mantine/hooks';
 import {
   IconDashboard,
   IconUsers,
-  IconUsersGroup,
   IconTrophy,
   IconFlag,
   IconMessageReport,
@@ -19,7 +18,6 @@ import { useAuthStore } from '../store/authStore';
 const navItems = [
   { path: '/moderator', label: 'Панель управления', icon: IconDashboard },
   { path: '/moderator/users', label: 'Пользователи', icon: IconUsers },
-  { path: '/moderator/teams', label: 'Команды', icon: IconUsersGroup },
   { path: '/moderator/competitions', label: 'Соревнования', icon: IconTrophy },
   { path: '/moderator/reports', label: 'Жалобы', icon: IconFlag },
   { path: '/moderator/platform-complaints', label: 'Обратная связь', icon: IconMessageReport },

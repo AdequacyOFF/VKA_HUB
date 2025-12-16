@@ -23,6 +23,7 @@ class TeamJoinRequest(Base):
     id = Column(Integer, primary_key=True, index=True)
     team_id = Column(Integer, ForeignKey("teams.id", ondelete="CASCADE"), nullable=False)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    invited_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)  # NULL = user requested, NOT NULL = team invited
     status = Column(
         Enum(JoinRequestStatus, name="joinrequeststatus", native_enum=True, values_callable=lambda x: [e.value for e in x]),
         default=JoinRequestStatus.PENDING,
@@ -33,7 +34,8 @@ class TeamJoinRequest(Base):
 
     # Relationships
     team = relationship("Team", back_populates="join_requests")
-    user = relationship("User", back_populates="join_requests")
+    user = relationship("User", foreign_keys=[user_id], back_populates="join_requests")
+    inviter = relationship("User", foreign_keys=[invited_by])
 
     def __repr__(self) -> str:
         return f"<TeamJoinRequest(id={self.id}, team_id={self.team_id}, user_id={self.user_id}, status={self.status})>"

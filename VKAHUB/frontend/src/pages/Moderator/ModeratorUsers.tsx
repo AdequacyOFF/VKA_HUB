@@ -4,9 +4,9 @@ import {
   Text, Modal, PasswordInput, Button, LoadingOverlay, Alert
 } from '@mantine/core';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { 
-  IconSearch, IconEdit, IconBan, IconCheck, IconX, 
-  IconDeviceFloppy, IconLock, IconShield
+import {
+  IconSearch, IconEdit, IconBan, IconCheck, IconX,
+  IconDeviceFloppy, IconLock, IconShield, IconLockOpen
 } from '@tabler/icons-react';
 import { VTBCard } from '../../components/common/VTBCard';
 import { VTBButton } from '../../components/common/VTBButton';
@@ -353,7 +353,7 @@ export function ModeratorUsers() {
                     <Table.Td>{user.study_group || '—'}</Table.Td>
                     <Table.Td>
                       <Badge color={user.is_banned ? 'red' : 'green'} variant="light">
-                        {user.is_banned ? 'Заблокирован' : 'Активен'}
+                        {user.is_banned ? 'blocked' : 'active'}
                       </Badge>
                     </Table.Td>
                     <Table.Td>
@@ -373,7 +373,7 @@ export function ModeratorUsers() {
                             onClick={() => unbanMutation.mutate(user.id)}
                             title="Разблокировать"
                           >
-                            <IconCheck size={18} />
+                            <IconLockOpen size={18} />
                           </ActionIcon>
                         ) : (
                           <ActionIcon
@@ -469,9 +469,9 @@ export function ModeratorUsers() {
               <Text><strong>ID:</strong> {selectedUser.id}</Text>
               <Text><strong>Имя:</strong> {selectedUser.first_name} {selectedUser.last_name}</Text>
               <Text><strong>Группа:</strong> {selectedUser.study_group || '—'}</Text>
-              <Text><strong>Статус:</strong> 
+              <Text><strong>Статус:</strong>
                 <Badge color={selectedUser.is_banned ? 'red' : 'green'} ml="sm" size="sm">
-                  {selectedUser.is_banned ? 'Заблокирован' : 'Активен'}
+                  {selectedUser.is_banned ? 'blocked' : 'active'}
                 </Badge>
               </Text>
 

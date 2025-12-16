@@ -477,24 +477,56 @@ async def get_platform_stats(
     user_growth = calc_growth(new_users_this_month, new_users_prev_month)
     team_growth = calc_growth(new_teams_this_month, new_teams_prev_month)
 
-    # Reports stats (using ModeratorReport as proxy for resolved reports)
-    total_reports = await db.scalar(select(func.count(ModeratorReport.id)))
-    # For pending reports, we'll estimate based on recent activity
-    # In a real implementation, you might have a dedicated reports/complaints table
-    pending_reports = 0  # Placeholder - would need a complaints table
-    resolved_reports = total_reports
+    # Reports stats - get from user_complaints table
+    from app.domain.models.user_complaint import UserComplaint, ComplaintStatus
+    from app.domain.models.platform_complaint import PlatformComplaint, ComplaintStatus as PlatformComplaintStatus
+
+    pending_reports = await db.scalar(
+        select(func.count(UserComplaint.id))
+        .where(UserComplaint.status == ComplaintStatus.PENDING)
+    )
+
+    resolved_reports = await db.scalar(
+        select(func.count(UserComplaint.id))
+        .where(UserComplaint.status == ComplaintStatus.RESOLVED)
+    )
+
+    rejected_reports = await db.scalar(
+        select(func.count(UserComplaint.id))
+        .where(UserComplaint.status == ComplaintStatus.REJECTED)
+    )
+
+    # Platform complaints (feedback) stats
+    pending_feedback = await db.scalar(
+        select(func.count(PlatformComplaint.id))
+        .where(PlatformComplaint.status == PlatformComplaintStatus.PENDING)
+    )
+
+    resolved_feedback = await db.scalar(
+        select(func.count(PlatformComplaint.id))
+        .where(PlatformComplaint.status == PlatformComplaintStatus.RESOLVED)
+    )
+
+    rejected_feedback = await db.scalar(
+        select(func.count(PlatformComplaint.id))
+        .where(PlatformComplaint.status == PlatformComplaintStatus.REJECTED)
+    )
 
     return {
-        "totalUsers": total_users or 0,
-        "totalTeams": total_teams or 0,
-        "totalCompetitions": total_competitions or 0,
-        "activeCompetitions": active_competitions or 0,
-        "pendingReports": pending_reports,
-        "resolvedReports": resolved_reports or 0,
-        "newUsersThisMonth": new_users_this_month or 0,
-        "newTeamsThisMonth": new_teams_this_month or 0,
-        "userGrowth": user_growth,
-        "teamGrowth": team_growth
+        "total_users": total_users or 0,
+        "total_teams": total_teams or 0,
+        "total_competitions": total_competitions or 0,
+        "active_competitions": active_competitions or 0,
+        "pending_reports": pending_reports or 0,
+        "resolved_reports": resolved_reports or 0,
+        "rejected_reports": rejected_reports or 0,
+        "pending_feedback": pending_feedback or 0,
+        "resolved_feedback": resolved_feedback or 0,
+        "rejected_feedback": rejected_feedback or 0,
+        "new_users_this_month": new_users_this_month or 0,
+        "new_teams_this_month": new_teams_this_month or 0,
+        "user_growth": user_growth,
+        "team_growth": team_growth
     }
 
 

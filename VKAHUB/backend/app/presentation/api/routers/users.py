@@ -83,6 +83,7 @@ async def list_users(
             updated_at=user.updated_at,
             roles=roles,
             skills=skills,
+            is_banned=user.is_banned,
             control_question=user.control_question,
         ))
 
@@ -785,6 +786,73 @@ async def mark_platform_complaint_response_as_read(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Ошибка при обновлении статуса: {str(e)}"
         )
+
+
+@router.get("/team-requests")
+async def get_my_team_requests(
+    current_user = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get current user's team requests and invitations"""
+    from app.domain.models.team_join_request import TeamJoinRequest
+    from app.domain.models.team import Team
+    from app.infrastructure.repositories.team_repository_impl import TeamRepositoryImpl
+
+    team_repo = TeamRepositoryImpl(db)
+
+    # Get all pending requests and invitations for the current user
+    result = await db.execute(
+        select(TeamJoinRequest, Team)
+        .join(Team, TeamJoinRequest.team_id == Team.id)
+        .where(TeamJoinRequest.user_id == current_user.id)
+        .where(TeamJoinRequest.status == "pending")
+        .order_by(TeamJoinRequest.created_at.desc())
+    )
+
+    requests_data = {
+        "invitations": [],  # Requests where invited_by is NOT NULL
+        "sent_requests": []  # Requests where invited_by is NULL
+    }
+
+    for request, team in result.all():
+        # Get team captain info
+        captain = None
+        if team.captain_id:
+            captain = await UserRepositoryImpl(db).get_by_id(team.captain_id)
+
+        request_item = {
+            "id": request.id,
+            "team_id": team.id,
+            "team_name": team.name,
+            "team_image": team.image_url,
+            "team_description": team.description,
+            "captain": {
+                "id": captain.id,
+                "login": captain.login,
+                "first_name": captain.first_name,
+                "last_name": captain.last_name,
+                "avatar_url": captain.avatar_url
+            } if captain else None,
+            "status": request.status.value if hasattr(request.status, 'value') else str(request.status),
+            "created_at": request.created_at.isoformat() if request.created_at else None
+        }
+
+        # Categorize based on invited_by field
+        if request.invited_by is not None:
+            # This is an invitation
+            inviter = await UserRepositoryImpl(db).get_by_id(request.invited_by)
+            request_item["invited_by"] = {
+                "id": inviter.id,
+                "login": inviter.login,
+                "first_name": inviter.first_name,
+                "last_name": inviter.last_name
+            } if inviter else None
+            requests_data["invitations"].append(request_item)
+        else:
+            # This is a request sent by the user
+            requests_data["sent_requests"].append(request_item)
+
+    return requests_data
 
 
 @router.get("/{user_id}", response_model=UserResponse)

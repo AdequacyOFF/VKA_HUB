@@ -33,7 +33,10 @@ async def list_teams(
     db: AsyncSession = Depends(get_db)
 ):
     """List all teams"""
+    from app.infrastructure.repositories.user_repository_impl import UserRepositoryImpl
+
     team_repo = TeamRepositoryImpl(db)
+    user_repo = UserRepositoryImpl(db)
 
     filters = {}
     if search:
@@ -41,20 +44,42 @@ async def list_teams(
 
     teams = await team_repo.list_teams(skip, limit, filters)
 
-    return TeamListResponse(
-        total=len(teams),
-        items=[
-            TeamResponse(
-                id=team.id,
-                name=team.name,
-                description=team.description,
-                image_url=team.image_url,
-                captain_id=team.captain_id,
-                created_at=team.created_at,
-                updated_at=team.updated_at
-            ) for team in teams
-        ]
-    )
+    # Build team responses with captain info and member count
+    team_items = []
+    for team in teams:
+        # Get captain details
+        captain = None
+        if team.captain_id:
+            captain_user = await user_repo.get_by_id(team.captain_id)
+            if captain_user:
+                captain = {
+                    "id": captain_user.id,
+                    "first_name": captain_user.first_name,
+                    "last_name": captain_user.last_name,
+                    "login": captain_user.login
+                }
+
+        # Get member count
+        members = await team_repo.get_team_members(team.id)
+        member_count = len(members)
+
+        team_data = {
+            "id": team.id,
+            "name": team.name,
+            "description": team.description,
+            "image_url": team.image_url,
+            "captain_id": team.captain_id,
+            "captain": captain,
+            "member_count": member_count,
+            "created_at": team.created_at,
+            "updated_at": team.updated_at
+        }
+        team_items.append(team_data)
+
+    return {
+        "total": len(team_items),
+        "items": team_items
+    }
 
 
 @router.post("", status_code=status.HTTP_201_CREATED, response_model=TeamResponse)
@@ -256,6 +281,87 @@ async def request_join_team(
     }
 
 
+@router.post("/{team_id}/invite/{user_id}")
+async def invite_user_to_team(
+    team_id: int,
+    user_id: int,
+    current_user = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Invite a user to join the team (captain only)"""
+    from app.domain.models.team_join_request import TeamJoinRequest, JoinRequestStatus
+    from app.infrastructure.repositories.user_repository_impl import UserRepositoryImpl
+    from sqlalchemy import select, and_
+
+    team_repo = TeamRepositoryImpl(db)
+    user_repo = UserRepositoryImpl(db)
+    team = await team_repo.get_by_id(team_id)
+
+    if not team:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Team not found"
+        )
+
+    # Check if current user is captain
+    if team.captain_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only team captain can invite users"
+        )
+
+    # Check if target user exists
+    target_user = await user_repo.get_by_id(user_id)
+    if not target_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
+    # Check if user is already a member
+    members = await team_repo.get_team_members(team_id)
+    if any(member.user_id == user_id for member in members):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User is already a member of this team"
+        )
+
+    # Check if there's already a pending invitation or request
+    result = await db.execute(
+        select(TeamJoinRequest).where(
+            and_(
+                TeamJoinRequest.team_id == team_id,
+                TeamJoinRequest.user_id == user_id,
+                TeamJoinRequest.status == JoinRequestStatus.PENDING
+            )
+        )
+    )
+    existing_request = result.scalar_one_or_none()
+
+    if existing_request:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="There is already a pending request or invitation for this user"
+        )
+
+    # Create new invitation
+    invitation = TeamJoinRequest(
+        team_id=team_id,
+        user_id=user_id,
+        invited_by=current_user.id,  # This marks it as an invitation
+        status=JoinRequestStatus.PENDING
+    )
+    db.add(invitation)
+    await db.commit()
+    await db.refresh(invitation)
+
+    return {
+        "message": "User invited successfully",
+        "invitation_id": invitation.id,
+        "status": invitation.status.value
+    }
+
+
 @router.get("/{team_id}/members")
 async def get_team_members(
     team_id: int,
@@ -441,6 +547,12 @@ async def get_join_requests(
     for req in requests:
         user = await user_repo.get_by_id(req.user_id)
         if user:
+            # Determine if this is an invitation (invited_by is not null) or a request
+            is_invitation = req.invited_by is not None
+            inviter = None
+            if is_invitation:
+                inviter = await user_repo.get_by_id(req.invited_by)
+
             request_list.append({
                 "id": req.id,
                 "team_id": team_id,
@@ -452,6 +564,13 @@ async def get_join_requests(
                 "middle_name": user.middle_name,
                 "study_group": user.position,
                 "status": req.status,
+                "is_invitation": is_invitation,
+                "invited_by": {
+                    "id": inviter.id,
+                    "login": inviter.login,
+                    "first_name": inviter.first_name,
+                    "last_name": inviter.last_name
+                } if inviter else None,
                 "created_at": req.created_at.isoformat() if req.created_at else None
             })
 

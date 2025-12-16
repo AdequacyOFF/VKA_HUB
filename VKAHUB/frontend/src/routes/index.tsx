@@ -26,7 +26,6 @@ import RegisterTeam from '@/pages/Competitions/RegisterTeam';
 import SubmitCompetitionReport from '@/pages/Competitions/SubmitCompetitionReport';
 import { ModeratorDashboard } from '@/pages/Moderator/ModeratorDashboard';
 import { ModeratorUsers } from '@/pages/Moderator/ModeratorUsers';
-import { ModeratorTeams } from '@/pages/Moderator/ModeratorTeams';
 import { ModeratorCompetitions } from '@/pages/Moderator/ModeratorCompetitions';
 import CreateCompetition from '@/pages/Moderator/CreateCompetition';
 import { ModeratorReports } from '@/pages/Moderator/ModeratorReports';
@@ -91,7 +90,6 @@ const router = createBrowserRouter(
     children: [
       { index: true, element: <ModeratorDashboard /> },
       { path: 'users', element: <ModeratorUsers /> },
-      { path: 'teams', element: <ModeratorTeams /> },
       { path: 'competitions', element: <ModeratorCompetitions /> },
       { path: 'competitions/create', element: <CreateCompetition /> },
       { path: 'reports', element: <ModeratorReports /> },
