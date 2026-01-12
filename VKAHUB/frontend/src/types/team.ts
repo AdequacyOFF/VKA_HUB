@@ -16,6 +16,7 @@ export interface Team {
   description?: string;
   image_url?: string;
   image?: string;
+  direction?: string;
   captain_id?: number;
   captain_name?: string;
   members_count?: number;
@@ -38,10 +39,18 @@ export interface CreateTeamData {
   name: string;
   description?: string;
   image_url?: string;
+  direction: string;
 }
 
 export interface UpdateTeamData {
   name?: string;
   description?: string;
   image_url?: string;
+  direction?: string;
+}
+
+export interface TeamStatistics {
+  team_id: number;
+  competitions_participated: number;
+  prizes_won: number;
 }

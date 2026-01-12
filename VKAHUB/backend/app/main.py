@@ -1,4 +1,6 @@
 """FastAPI main application"""
+# Offline-friendly architecture - optimized for layer caching
+# DEV mode test: This change should apply instantly without rebuild!
 
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles

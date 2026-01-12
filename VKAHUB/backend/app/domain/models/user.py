@@ -54,6 +54,7 @@ class User(Base):
     created_competitions = relationship("Competition", foreign_keys="Competition.created_by", back_populates="creator")
     generated_reports = relationship("ModeratorReport", foreign_keys="ModeratorReport.generated_by", back_populates="generator")
     authored_reports = relationship("TeamReport", back_populates="author")
+    notifications = relationship("Notification", back_populates="user", cascade="all, delete-orphan")
 
     def __repr__(self) -> str:
         return f"<User(id={self.id}, login='{self.login}')>"

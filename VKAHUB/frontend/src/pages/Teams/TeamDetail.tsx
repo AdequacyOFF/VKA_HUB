@@ -3,13 +3,14 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Container, Title, Grid, Stack, Avatar, Badge, Text, Group } from '@mantine/core';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
-import { IconUsers, IconCrown, IconUserPlus, IconFileText } from '@tabler/icons-react';
+import { IconUsers, IconCrown, IconUserPlus, IconFileText, IconTrophy, IconFlag } from '@tabler/icons-react';
 import { VTBCard } from '../../components/common/VTBCard';
 import { VTBButton } from '../../components/common/VTBButton';
 import { ConfirmModal } from '../../components/common/ConfirmModal';
 import { teamsApi } from '../../api';
 import { useAuthStore } from '../../store/authStore';
-import { Team, TeamMember } from '../../types';
+import { Team, TeamMember, TeamStatistics } from '../../types';
+import { invalidateTeamQueries } from '../../utils/cacheInvalidation';
 
 export function TeamDetail() {
   const { id } = useParams();
@@ -27,13 +28,24 @@ export function TeamDetail() {
     enabled: !!id,
   });
 
+  const { data: statistics } = useQuery<TeamStatistics>({
+    queryKey: ['team-statistics', id],
+    queryFn: async () => {
+      if (!id) throw new Error('Team ID is required');
+      return await teamsApi.getTeamStatistics(Number(id));
+    },
+    enabled: !!id,
+  });
+
   const joinMutation = useMutation({
     mutationFn: () => {
       if (!id) throw new Error('Team ID is required');
       return teamsApi.joinTeam(Number(id));
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['team', id] });
+      // Use centralized invalidation - invalidates team data and user's team
+      invalidateTeamQueries({ queryClient }, Number(id));
+
       notifications.show({
         title: 'Успех',
         message: 'Заявка на вступление отправлена',
@@ -89,7 +101,27 @@ export function TeamDetail() {
   return (
     <Container size="xl" py="xl">
       <Stack gap="xl">
-        <VTBCard variant="primary">
+        <VTBCard variant="primary" style={{ position: 'relative' }}>
+          {team.direction && (
+            <Badge
+              variant="light"
+              color="cyan"
+              size="lg"
+              leftSection={<IconFlag size={16} />}
+              style={{
+                position: 'absolute',
+                top: 16,
+                right: 16,
+                zIndex: 10,
+                background: 'rgba(0, 217, 255, 0.9)',
+                color: '#0a1929',
+                border: '1px solid var(--vtb-cyan)',
+                fontWeight: 600,
+              }}
+            >
+              {team.direction}
+            </Badge>
+          )}
           <Grid gutter="xl">
             <Grid.Col span={{ base: 12, md: 4 }}>
               {team.image_url ? (
@@ -164,6 +196,37 @@ export function TeamDetail() {
                     </Badge>
                   )}
                 </Group>
+
+                {statistics && (
+                  <Group gap="md">
+                    <Badge
+                      variant="light"
+                      color="blue"
+                      size="lg"
+                      leftSection={<IconFlag size={16} />}
+                      style={{
+                        background: 'rgba(37, 99, 184, 0.2)',
+                        color: '#2563b8',
+                        border: '1px solid #2563b8',
+                      }}
+                    >
+                      Участий: {statistics.competitions_participated}
+                    </Badge>
+                    <Badge
+                      variant="light"
+                      color="gold"
+                      size="lg"
+                      leftSection={<IconTrophy size={16} />}
+                      style={{
+                        background: 'rgba(255, 215, 0, 0.2)',
+                        color: '#ffd700',
+                        border: '1px solid #ffd700',
+                      }}
+                    >
+                      Призов: {statistics.prizes_won}
+                    </Badge>
+                  </Group>
+                )}
 
                 <Group gap="md" mt="auto">
                   {!isMember && user && (

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Container, Title, Grid, Stack, Badge, Text, Group, Tabs, Avatar, Timeline, Accordion, Divider } from '@mantine/core';
+import { Container, Title, Grid, Stack, Badge, Text, Group, Tabs, Avatar, Timeline, Accordion, Divider, ActionIcon, Tooltip, Modal } from '@mantine/core';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
 import {
@@ -14,22 +14,27 @@ import {
   IconAward,
   IconAlertCircle,
   IconCheck,
-  IconCode
+  IconCode,
+  IconTrash,
+  IconDownload
 } from '@tabler/icons-react';
 import { VTBCard } from '../../components/common/VTBCard';
 import { VTBButton } from '../../components/common/VTBButton';
-import { ConfirmModal } from '../../components/common/ConfirmModal';
+import { TeamRegistrationModal } from '../../components/common/TeamRegistrationModal';
 import { competitionsApi } from '../../api';
 import { useAuthStore } from '../../store/authStore';
 import { Competition } from '../../types';
 import dayjs from 'dayjs';
+import { invalidateCompetitionQueries } from '../../utils/cacheInvalidation';
 
 export function CompetitionDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const user = useAuthStore((state) => state.user);
-  const [joinModalOpened, setJoinModalOpened] = useState(false);
+  const [registrationModalOpened, setRegistrationModalOpened] = useState(false);
+  const [removeConfirmOpened, setRemoveConfirmOpened] = useState(false);
+  const [teamToRemove, setTeamToRemove] = useState<any>(null);
 
   const { data: competition, isLoading } = useQuery<Competition>({
     queryKey: ['competition', id],
@@ -40,25 +45,74 @@ export function CompetitionDetail() {
     enabled: !!id,
   });
 
-  const joinMutation = useMutation({
-    mutationFn: () => competitionsApi.joinCompetition(Number(id)),
+  const { data: registrationsData } = useQuery({
+    queryKey: ['competition-registrations', id],
+    queryFn: async () => {
+      const response = await competitionsApi.getCompetitionRegistrations(Number(id));
+      return response;
+    },
+    enabled: !!id,
+  });
+
+  const removeTeamMutation = useMutation({
+    mutationFn: ({ competitionId, registrationId }: { competitionId: number; registrationId: number }) =>
+      competitionsApi.removeTeamFromCompetition(competitionId, registrationId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['competition', id] });
       notifications.show({
-        title: 'Успех',
-        message: 'Заявка на участие отправлена',
-        color: 'teal',
+        title: 'Команда удалена',
+        message: 'Команда успешно удалена из соревнования',
+        color: 'green',
       });
-      setJoinModalOpened(false);
+
+      // Use centralized invalidation - invalidates competition data and registrations
+      invalidateCompetitionQueries({ queryClient }, Number(id));
+
+      setRemoveConfirmOpened(false);
+      setTeamToRemove(null);
     },
     onError: () => {
       notifications.show({
         title: 'Ошибка',
-        message: 'Не удалось отправить заявку',
+        message: 'Не удалось удалить команду',
         color: 'red',
       });
     },
   });
+
+  const handleGenerateReport = async () => {
+    try {
+      const blob = await competitionsApi.generateCompetitionReport(Number(id));
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `raport_${competition?.name || id}_${dayjs().format('YYYYMMDD')}.docx`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      notifications.show({
+        title: 'Рапорт сгенерирован',
+        message: 'Рапорт успешно загружен',
+        color: 'green',
+      });
+    } catch (error) {
+      notifications.show({
+        title: 'Ошибка',
+        message: 'Не удалось сгенерировать рапорт',
+        color: 'red',
+      });
+    }
+  };
+
+  const handleRemoveTeam = (team: any) => {
+    setTeamToRemove(team);
+    setRemoveConfirmOpened(true);
+  };
+
+  const handleRegistrationSuccess = () => {
+    // Use centralized invalidation for consistency
+    invalidateCompetitionQueries({ queryClient }, Number(id));
+  };
 
   if (isLoading) {
     return (
@@ -80,8 +134,24 @@ export function CompetitionDetail() {
     );
   }
 
+  // Calculate competition status based on dates
+  const getCompetitionStatus = (): string => {
+    const now = new Date();
+    const startDate = new Date(competition.start_date);
+    const endDate = new Date(competition.end_date);
+
+    if (now < startDate) {
+      return 'upcoming';
+    } else if (now >= startDate && now <= endDate) {
+      return 'ongoing';
+    } else {
+      return 'completed';
+    }
+  };
+
+  const competitionStatus = getCompetitionStatus();
   const isParticipant = competition.participants?.some((p: any) => p.user_id === user?.id);
-  const canRegister = competition.status === 'upcoming' || competition.status === 'ongoing';
+  const canRegister = competitionStatus === 'upcoming' || competitionStatus === 'ongoing';
   const isRegistrationOpen = competition.registration_deadline
     ? dayjs().isBefore(dayjs(competition.registration_deadline))
     : true;
@@ -130,15 +200,15 @@ export function CompetitionDetail() {
                   <Group gap="md" mb="md">
                     <Badge
                       variant="light"
-                      color={getStatusColor(competition.status)}
+                      color={getStatusColor(competitionStatus)}
                       size="lg"
                       style={{
-                        background: `rgba(${getStatusColor(competition.status) === 'blue' ? '59, 130, 246' : getStatusColor(competition.status) === 'green' ? '34, 197, 94' : '156, 163, 175'}, 0.2)`,
-                        color: getStatusColor(competition.status) === 'blue' ? 'var(--vtb-blue-light)' : getStatusColor(competition.status) === 'green' ? '#22c55e' : '#9ca3af',
-                        border: `1px solid ${getStatusColor(competition.status) === 'blue' ? 'var(--vtb-blue-light)' : getStatusColor(competition.status) === 'green' ? '#22c55e' : '#9ca3af'}`,
+                        background: `rgba(${getStatusColor(competitionStatus) === 'blue' ? '59, 130, 246' : getStatusColor(competitionStatus) === 'green' ? '34, 197, 94' : '156, 163, 175'}, 0.2)`,
+                        color: getStatusColor(competitionStatus) === 'blue' ? 'var(--vtb-blue-light)' : getStatusColor(competitionStatus) === 'green' ? '#22c55e' : '#9ca3af',
+                        border: `1px solid ${getStatusColor(competitionStatus) === 'blue' ? 'var(--vtb-blue-light)' : getStatusColor(competitionStatus) === 'green' ? '#22c55e' : '#9ca3af'}`,
                       }}
                     >
-                      {getStatusLabel(competition.status)}
+                      {getStatusLabel(competitionStatus)}
                     </Badge>
                     <Badge
                       variant="light"
@@ -304,9 +374,9 @@ export function CompetitionDetail() {
                     {isRegistrationOpen && (
                       <VTBButton
                         leftSection={<IconUserPlus size={18} />}
-                        onClick={() => setJoinModalOpened(true)}
+                        onClick={() => setRegistrationModalOpened(true)}
                       >
-                        Подать заявку на участие
+                        Зарегистрировать команду
                       </VTBButton>
                     )}
                   </>
@@ -504,50 +574,127 @@ export function CompetitionDetail() {
           </Tabs.List>
 
           <Tabs.Panel value="participants" pt="xl">
-            <VTBCard variant="secondary">
-              {competition.participants && competition.participants.length > 0 ? (
-                <Grid gutter="md">
-                  {competition.participants.map((participant: any) => (
-                    <Grid.Col key={participant.id} span={{ base: 12, sm: 6, md: 4 }}>
-                      <div
-                        className="glass-card"
-                        style={{
-                          padding: 16,
-                          cursor: 'pointer',
-                        }}
-                        onClick={() => navigate(`/users/${participant.user_id}`)}
-                      >
-                        <Group>
-                          <Avatar
-                            src={participant.avatar}
-                            size="lg"
-                            radius="xl"
-                            className="vtb-avatar"
-                            style={{
-                              border: '3px solid var(--vtb-cyan)',
-                            }}
-                          />
-                          <Stack gap={4} style={{ flex: 1 }}>
-                            <Text fw={600} c="white" size="sm">
-                              {participant.first_name} {participant.last_name}
-                            </Text>
-                            {participant.team_name && (
-                              <Text size="xs" c="dimmed">
-                                Команда: {participant.team_name}
-                              </Text>
-                            )}
-                          </Stack>
-                        </Group>
-                      </div>
-                    </Grid.Col>
-                  ))}
-                </Grid>
-              ) : (
-                <Text c="dimmed" ta="center">
-                  Пока нет участников
-                </Text>
+            <Stack gap="md">
+              {user?.is_moderator && (
+                <Group justify="flex-end">
+                  <VTBButton
+                    leftSection={<IconDownload size={18} />}
+                    onClick={handleGenerateReport}
+                    variant="secondary"
+                  >
+                    Сгенерировать рапорт
+                  </VTBButton>
+                </Group>
               )}
-            </VTBCard>
+              <VTBCard variant="secondary">
+                {registrationsData?.registrations && registrationsData.registrations.length > 0 ? (
+                  <Stack gap="md">
+                    {registrationsData.registrations.map((registration: any) => (
+                      <VTBCard key={registration.id} variant="primary">
+                        <Group justify="space-between" align="flex-start">
+                          <Group align="flex-start" style={{ flex: 1 }}>
+                            {registration.team_image && (
+                              <Avatar
+                                src={registration.team_image}
+                                size="xl"
+                                radius="md"
+                                style={{
+                                  border: '2px solid var(--vtb-cyan)',
+                                }}
+                              />
+                            )}
+                            <Stack gap="sm" style={{ flex: 1 }}>
+                              <div>
+                                <Group gap="sm" mb="xs">
+                                  <Text fw={700} c="white" size="lg">
+                                    {registration.team_name}
+                                  </Text>
+                                  <Badge
+                                    variant="light"
+                                    color={registration.status === 'approved' ? 'green' : registration.status === 'rejected' ? 'red' : 'yellow'}
+                                  >
+                                    {registration.status === 'approved' ? 'Одобрено' : registration.status === 'rejected' ? 'Отклонено' : 'Ожидает'}
+                                  </Badge>
+                                </Group>
+                                {registration.team_description && (
+                                  <Text size="sm" c="dimmed" mb="xs">
+                                    {registration.team_description}
+                                  </Text>
+                                )}
+                                {registration.captain && (
+                                  <Text size="sm" c="dimmed">
+                                    <strong>Капитан:</strong> {registration.captain.first_name} {registration.captain.last_name}
+                                  </Text>
+                                )}
+                                {registration.address && (
+                                  <Group gap="xs" mt="xs">
+                                    <IconMapPin size={16} color="var(--vtb-cyan)" />
+                                    <Text size="sm" c="white">
+                                      {registration.address}
+                                    </Text>
+                                  </Group>
+                                )}
+                              </div>
+
+                              <div>
+                                <Text size="sm" fw={600} c="white" mb="xs">
+                                  Участники ({registration.members.length}):
+                                </Text>
+                                <Grid gutter="xs">
+                                  {registration.members.map((member: any) => (
+                                    <Grid.Col key={member.id} span={{ base: 12, sm: 6 }}>
+                                      <Group gap="xs">
+                                        <Avatar
+                                          src={member.avatar}
+                                          size="sm"
+                                          radius="xl"
+                                        />
+                                        <div>
+                                          <Text size="xs" c="white">
+                                            {member.rank && `${member.rank} `}
+                                            {member.first_name} {member.last_name}
+                                            {member.middle_name && ` ${member.middle_name}`}
+                                          </Text>
+                                          {member.position && (
+                                            <Text size="xs" c="dimmed">
+                                              {member.position}
+                                            </Text>
+                                          )}
+                                        </div>
+                                      </Group>
+                                    </Grid.Col>
+                                  ))}
+                                </Grid>
+                              </div>
+
+                              <Text size="xs" c="dimmed">
+                                Зарегистрирована: {dayjs(registration.applied_at).format('DD.MM.YYYY HH:mm')}
+                              </Text>
+                            </Stack>
+                          </Group>
+
+                          {user?.is_moderator && (
+                            <Tooltip label="Удалить команду">
+                              <ActionIcon
+                                color="red"
+                                variant="subtle"
+                                onClick={() => handleRemoveTeam(registration)}
+                              >
+                                <IconTrash size={20} />
+                              </ActionIcon>
+                            </Tooltip>
+                          )}
+                        </Group>
+                      </VTBCard>
+                    ))}
+                  </Stack>
+                ) : (
+                  <Text c="dimmed" ta="center">
+                    Пока нет зарегистрированных команд
+                  </Text>
+                )}
+              </VTBCard>
+            </Stack>
           </Tabs.Panel>
 
           <Tabs.Panel value="results" pt="xl">
@@ -595,14 +742,55 @@ export function CompetitionDetail() {
           </Tabs.Panel>
         </Tabs>
 
-        <ConfirmModal
-          opened={joinModalOpened}
-          onClose={() => setJoinModalOpened(false)}
-          onConfirm={() => joinMutation.mutate()}
-          title="Подать заявку на участие"
-          message={`Вы уверены, что хотите подать заявку на участие в соревновании "${competition.name}"?`}
-          confirmText="Подать заявку"
-          loading={joinMutation.isPending}
+        <Modal
+          opened={removeConfirmOpened}
+          onClose={() => {
+            setRemoveConfirmOpened(false);
+            setTeamToRemove(null);
+          }}
+          title="Подтвердите удаление"
+          centered
+        >
+          <Stack gap="md">
+            <Text>
+              Вы уверены, что хотите удалить команду <strong>{teamToRemove?.team_name}</strong> из соревнования?
+            </Text>
+            <Text size="sm" c="dimmed">
+              Всем участникам команды будет отправлено уведомление об удалении.
+            </Text>
+            <Group justify="flex-end" gap="sm">
+              <VTBButton
+                variant="secondary"
+                onClick={() => {
+                  setRemoveConfirmOpened(false);
+                  setTeamToRemove(null);
+                }}
+              >
+                Отмена
+              </VTBButton>
+              <VTBButton
+                color="red"
+                onClick={() => {
+                  if (teamToRemove) {
+                    removeTeamMutation.mutate({
+                      competitionId: Number(id),
+                      registrationId: teamToRemove.id,
+                    });
+                  }
+                }}
+                loading={removeTeamMutation.isPending}
+              >
+                Удалить
+              </VTBButton>
+            </Group>
+          </Stack>
+        </Modal>
+
+        <TeamRegistrationModal
+          opened={registrationModalOpened}
+          onClose={() => setRegistrationModalOpened(false)}
+          competition={competition}
+          onSuccess={handleRegistrationSuccess}
         />
       </Stack>
     </Container>

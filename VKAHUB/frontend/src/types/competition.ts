@@ -57,6 +57,7 @@ export interface Competition {
 export interface Application {
   team_id: number;
   member_ids: number[];
+  case_id?: number | null;
 }
 
 export interface Registration {

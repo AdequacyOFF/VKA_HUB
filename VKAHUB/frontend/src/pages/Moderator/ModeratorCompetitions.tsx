@@ -9,6 +9,7 @@ import { notifications } from '@mantine/notifications';
 import { competitionsApi, api } from '../../api';
 import { Competition } from '../../types';
 import dayjs from 'dayjs';
+import { invalidateCompetitionQueries } from '../../utils/cacheInvalidation';
 
 interface CompetitionReport {
   id: number;
@@ -53,7 +54,10 @@ export function ModeratorCompetitions() {
   const deleteMutation = useMutation({
     mutationFn: (id: number) => api.delete(`/api/competitions/${id}`),
     onSuccess: () => {
+      // Invalidate both moderator view and public competitions list
       queryClient.invalidateQueries({ queryKey: ['moderator-competitions'] });
+      invalidateCompetitionQueries({ queryClient });
+
       notifications.show({ title: 'Успех', message: 'Соревнование удалено', color: 'teal' });
     },
     onError: (error: { response?: { data?: { detail?: string } } }) => {

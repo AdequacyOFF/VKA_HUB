@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Container,
@@ -9,23 +9,27 @@ import {
   Text,
   Grid,
   Group,
+  MultiSelect,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
-import { IconUsers, IconArrowLeft } from '@tabler/icons-react';
+import { IconUsers, IconArrowLeft, IconFlag } from '@tabler/icons-react';
 
 import { VTBCard } from '../../components/common/VTBCard';
 import { VTBButton } from '../../components/common/VTBButton';
 import { AvatarUploader } from '../../components/common/AvatarUploader';
 import { teamsApi, api } from '../../api';
 import { Team } from '../../types';
+import { invalidateTeamQueries } from '../../utils/cacheInvalidation';
 
 export function EditTeam() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const queryClient = useQueryClient();
   const teamId = Number(id);
+
+  const [isCustomDirection, setIsCustomDirection] = useState(false);
 
   const { data: team, isLoading } = useQuery<Team>({
     queryKey: ['team', teamId],
@@ -37,6 +41,8 @@ export function EditTeam() {
     initialValues: {
       name: '',
       description: '',
+      directions: [] as string[],
+      customDirection: '',
     },
     validate: {
       name: (value) =>
@@ -49,25 +55,58 @@ export function EditTeam() {
               : null,
       description: (value) =>
         value && value.length > 500 ? 'Описание не должно превышать 500 символов' : null,
+      directions: (value) => {
+        if (!value || value.length === 0) return 'Выберите хотя бы одно направление';
+        if (value.length > 2) return 'Можно выбрать максимум 2 направления';
+        return null;
+      },
+      customDirection: (value, values) => {
+        if (values.directions.includes('Другое') && !value) {
+          return 'Введите направление команды';
+        }
+        if (value && value.length > 100) {
+          return 'Направление не должно превышать 100 символов';
+        }
+        return null;
+      },
     },
   });
 
   useEffect(() => {
     if (team) {
+      // Check if the team's direction contains multiple directions (separated by ", ")
+      const predefinedDirections = ['CTF', 'Хакатон', 'Дроны'];
+      const directionParts = team.direction ? team.direction.split(', ').map(d => d.trim()) : [];
+
+      const mappedDirections: string[] = [];
+      let customDir = '';
+
+      directionParts.forEach(dir => {
+        if (predefinedDirections.includes(dir)) {
+          mappedDirections.push(dir);
+        } else if (dir) {
+          // This is a custom direction
+          mappedDirections.push('Другое');
+          customDir = dir;
+        }
+      });
+
       form.setValues({
         name: team.name,
         description: team.description || '',
+        directions: mappedDirections,
+        customDirection: customDir,
       });
+      setIsCustomDirection(mappedDirections.includes('Другое'));
     }
   }, [team]);
 
   const updateTeamMutation = useMutation({
-    mutationFn: (data: { name: string; description?: string }) =>
+    mutationFn: (data: { name: string; description?: string; direction?: string }) =>
       teamsApi.updateTeam(teamId, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['team', teamId] });
-      queryClient.invalidateQueries({ queryKey: ['teams'] });
-      queryClient.invalidateQueries({ queryKey: ['my-team'] });
+      // Use centralized invalidation for consistency
+      invalidateTeamQueries({ queryClient }, teamId);
 
       notifications.show({
         title: 'Успех',
@@ -86,9 +125,16 @@ export function EditTeam() {
   });
 
   const handleSubmit = (values: typeof form.values) => {
+    // Replace "Другое" with custom direction, then join with ", "
+    const finalDirections = values.directions.map(dir =>
+      dir === 'Другое' ? values.customDirection : dir
+    );
+    const directionString = finalDirections.join(', ');
+
     updateTeamMutation.mutate({
       name: values.name.trim(),
       description: values.description.trim() || undefined,
+      direction: directionString || undefined,
     });
   };
 
@@ -106,8 +152,8 @@ export function EditTeam() {
       color: 'teal',
     });
 
-    queryClient.invalidateQueries({ queryKey: ['team', teamId] });
-    queryClient.invalidateQueries({ queryKey: ['teams'] });
+    // Use centralized invalidation
+    invalidateTeamQueries({ queryClient }, teamId);
   };
 
   const handleImageRemove = async () => {
@@ -118,8 +164,8 @@ export function EditTeam() {
       color: 'teal',
     });
 
-    queryClient.invalidateQueries({ queryKey: ['team', teamId] });
-    queryClient.invalidateQueries({ queryKey: ['teams'] });
+    // Use centralized invalidation
+    invalidateTeamQueries({ queryClient }, teamId);
   };
 
   if (isLoading) {
@@ -191,6 +237,48 @@ export function EditTeam() {
                     styles={{ label: { color: '#ffffff', fontWeight: 600, marginBottom: 8 } }}
                     {...form.getInputProps('name')}
                   />
+
+                  <MultiSelect
+                    label="Направление команды"
+                    placeholder="Выберите до 2 направлений"
+                    leftSection={<IconFlag size={18} />}
+                    size="md"
+                    classNames={{ input: 'glass-input' }}
+                    styles={{
+                      label: { color: '#ffffff', fontWeight: 600, marginBottom: 8 },
+                    }}
+                    data={[
+                      { value: 'CTF', label: 'CTF' },
+                      { value: 'Хакатон', label: 'Хакатон' },
+                      { value: 'Дроны', label: 'Дроны' },
+                      { value: 'Другое', label: 'Другое' },
+                    ]}
+                    maxValues={2}
+                    {...form.getInputProps('directions')}
+                    onChange={(value) => {
+                      form.setFieldValue('directions', value);
+                      setIsCustomDirection(value.includes('Другое'));
+                      if (!value.includes('Другое')) {
+                        form.setFieldValue('customDirection', '');
+                      }
+                    }}
+                    required
+                  />
+
+                  {isCustomDirection && (
+                    <TextInput
+                      label="Укажите направление"
+                      placeholder="Введите направление команды"
+                      leftSection={<IconFlag size={18} />}
+                      size="md"
+                      classNames={{ input: 'glass-input' }}
+                      styles={{
+                        label: { color: '#ffffff', fontWeight: 600, marginBottom: 8 },
+                      }}
+                      {...form.getInputProps('customDirection')}
+                      required
+                    />
+                  )}
 
                   <Textarea
                     label="Описание"

@@ -15,7 +15,8 @@ class Team(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(255), nullable=False, index=True)
     description = Column(Text)
-    image_url = Column(String(500))
+    image_url = Column(Text)  # Changed from String(500) to Text to support base64 images
+    direction = Column(String(100), nullable=False, default="Другое")  # Team direction: CTF/Hackathon/etc
     captain_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=False)

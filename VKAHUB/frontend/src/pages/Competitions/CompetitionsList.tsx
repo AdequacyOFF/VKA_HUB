@@ -26,6 +26,21 @@ export function CompetitionsList() {
     },
   });
 
+  // Helper function to compute competition status based on dates
+  const getCompetitionStatus = (comp: any): string => {
+    const now = new Date();
+    const startDate = new Date(comp.start_date);
+    const endDate = new Date(comp.end_date);
+
+    if (now < startDate) {
+      return 'upcoming';
+    } else if (now >= startDate && now <= endDate) {
+      return 'ongoing';
+    } else {
+      return 'completed';
+    }
+  };
+
   // Safe array access
   const safeItems = Array.isArray(data?.items) ? data.items : [];
   const filteredCompetitions = safeItems.filter((comp) => {
@@ -34,7 +49,8 @@ export function CompetitionsList() {
       (comp.name || '').toLowerCase().includes(searchLower) ||
       (comp.description || '').toLowerCase().includes(searchLower);
 
-    const matchesStatus = !statusFilter || comp.status === statusFilter;
+    const computedStatus = getCompetitionStatus(comp);
+    const matchesStatus = !statusFilter || computedStatus === statusFilter;
     const matchesType = !typeFilter || comp.type === typeFilter;
 
     return matchesSearch && matchesStatus && matchesType;
@@ -66,7 +82,6 @@ export function CompetitionsList() {
               placeholder="Статус"
               leftSection={<IconFilter size={18} />}
               data={[
-                { value: '', label: 'Все статусы' },
                 { value: 'upcoming', label: 'Предстоящие' },
                 { value: 'ongoing', label: 'Идут сейчас' },
                 { value: 'completed', label: 'Завершённые' },
@@ -81,10 +96,9 @@ export function CompetitionsList() {
               placeholder="Тип"
               leftSection={<IconTrophy size={18} />}
               data={[
-                { value: '', label: 'Все типы' },
+                { value: '', label: 'Все' },
                 { value: 'hackathon', label: 'Хакатон' },
-                { value: 'olympiad', label: 'Олимпиада' },
-                { value: 'championship', label: 'Чемпионат' },
+                { value: 'CTF', label: 'CTF' },
                 { value: 'other', label: 'Другое' },
               ]}
               value={typeFilter}

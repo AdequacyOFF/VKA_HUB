@@ -6,6 +6,7 @@ import { VTBCard } from '../../components/common/VTBCard';
 import { notifications } from '@mantine/notifications';
 import { teamsApi, api } from '../../api';
 import { Team } from '../../types';
+import { invalidateTeamQueries } from '../../utils/cacheInvalidation';
 
 // Extended team type with moderator-specific fields
 interface TeamWithMetadata extends Team {
@@ -38,7 +39,10 @@ export function ModeratorTeams() {
   const deleteMutation = useMutation({
     mutationFn: (teamId: number) => api.delete(`/api/moderator/teams/${teamId}`),
     onSuccess: () => {
+      // Invalidate both moderator view and public teams list
       queryClient.invalidateQueries({ queryKey: ['moderator-teams'] });
+      invalidateTeamQueries({ queryClient });
+
       notifications.show({ title: 'Успех', message: 'Команда удалена', color: 'teal' });
     },
     onError: (error: { response?: { data?: { detail?: string } } }) => {

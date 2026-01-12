@@ -44,7 +44,7 @@ async def list_teams(
 
     teams = await team_repo.list_teams(skip, limit, filters)
 
-    # Build team responses with captain info and member count
+    # Build team responses with captain info and members
     team_items = []
     for team in teams:
         # Get captain details
@@ -59,18 +59,34 @@ async def list_teams(
                     "login": captain_user.login
                 }
 
-        # Get member count
+        # Get team members with user details
         members = await team_repo.get_team_members(team.id)
-        member_count = len(members)
+        members_data = []
+
+        for member in members:
+            user = await user_repo.get_by_id(member.user_id)
+            if user:
+                members_data.append({
+                    "id": member.id,
+                    "user_id": user.id,
+                    "first_name": user.first_name,
+                    "last_name": user.last_name,
+                    "middle_name": user.middle_name,
+                    "avatar": user.avatar_url,
+                    "position": user.position,
+                    "joined_at": member.joined_at,
+                    "left_at": member.left_at
+                })
 
         team_data = {
             "id": team.id,
             "name": team.name,
             "description": team.description,
             "image_url": team.image_url,
+            "direction": team.direction,
             "captain_id": team.captain_id,
             "captain": captain,
-            "member_count": member_count,
+            "members": members_data,
             "created_at": team.created_at,
             "updated_at": team.updated_at
         }
@@ -94,7 +110,8 @@ async def create_team(
         name=request.name,
         description=request.description or "",
         captain_id=current_user.id,
-        image_url=request.image_url
+        image_url=request.image_url,
+        direction=request.direction
     )
     return TeamResponse(**result)
 
@@ -141,6 +158,7 @@ async def get_team(
         name=team.name,
         description=team.description,
         image_url=team.image_url,
+        direction=team.direction,
         captain_id=team.captain_id,
         members=members_data,
         created_at=team.created_at,
@@ -192,6 +210,7 @@ async def update_team(
         name=updated_team.name,
         description=updated_team.description,
         image_url=updated_team.image_url,
+        direction=updated_team.direction,
         captain_id=updated_team.captain_id,
         created_at=updated_team.created_at,
         updated_at=updated_team.updated_at
@@ -866,4 +885,51 @@ async def delete_team_report(
     await db.commit()
 
     return {"message": "Report deleted successfully"}
-    
+
+
+@router.get("/{team_id}/statistics")
+async def get_team_statistics(
+    team_id: int,
+    db: AsyncSession = Depends(get_db)
+):
+    """Get team statistics (competitions participated, prizes won)"""
+    from app.domain.models.competition_registration import CompetitionRegistration
+    from app.domain.models.competition_report import CompetitionReport
+    from sqlalchemy import select, and_
+
+    team_repo = TeamRepositoryImpl(db)
+    team = await team_repo.get_by_id(team_id)
+
+    if not team:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Team not found"
+        )
+
+    # Get all competition registrations for this team
+    result = await db.execute(
+        select(CompetitionRegistration)
+        .where(CompetitionRegistration.team_id == team_id)
+    )
+    registrations = result.scalars().all()
+
+    total_competitions = len(registrations)
+
+    # Get prizes won (placements 1-3)
+    prizes_won = 0
+    for registration in registrations:
+        # Get report for this registration
+        report_result = await db.execute(
+            select(CompetitionReport)
+            .where(CompetitionReport.registration_id == registration.id)
+        )
+        report = report_result.scalar_one_or_none()
+
+        if report and report.placement and 1 <= report.placement <= 3:
+            prizes_won += 1
+
+    return {
+        "team_id": team_id,
+        "competitions_participated": total_competitions,
+        "prizes_won": prizes_won
+    }

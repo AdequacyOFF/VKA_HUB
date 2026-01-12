@@ -25,11 +25,12 @@ class Competition(Base):
     name = Column(String(255), nullable=False, index=True)
     link = Column(String(500))
     image_url = Column(String(500))
-    start_date = Column(Date, nullable=False)
-    end_date = Column(Date, nullable=False)
+    start_date = Column(DateTime, nullable=False)  # Changed from Date to DateTime to include time
+    end_date = Column(DateTime, nullable=False)  # Changed from Date to DateTime to include time
     registration_deadline = Column(DateTime, nullable=False)
     description = Column(Text)
     other_type_description = Column(String(255))  # Description for "other" type competitions
+    organizer = Column(String(500), nullable=True)  # Competition organizer (e.g., "ПАО «ВТБ»")
     min_team_size = Column(Integer, nullable=False, default=2)  # Minimum team members
     max_team_size = Column(Integer, nullable=False, default=5)  # Maximum team members
     case_file_url = Column(String(500))

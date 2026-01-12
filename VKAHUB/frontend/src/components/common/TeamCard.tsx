@@ -1,5 +1,5 @@
 import { Avatar, Badge, Group, Stack, Text, Image } from '@mantine/core';
-import { IconUsers } from '@tabler/icons-react';
+import { IconUsers, IconFlag } from '@tabler/icons-react';
 import { VTBCard } from './VTBCard';
 import { useNavigate } from 'react-router-dom';
 
@@ -8,6 +8,7 @@ interface TeamCardProps {
   name: string;
   description?: string;
   image?: string | null;
+  direction?: string;
   variant?: 'default' | 'primary' | 'secondary' | 'accent';
   onClick?: () => void;
 }
@@ -17,6 +18,7 @@ export function TeamCard({
   name,
   description,
   image,
+  direction,
   variant = 'default',
   onClick,
 }: TeamCardProps) {
@@ -31,8 +33,29 @@ export function TeamCard({
   };
 
   return (
-    <VTBCard variant={variant} onClick={handleClick} style={{ cursor: 'pointer', height: '100%' }}>
+    <VTBCard variant={variant} onClick={handleClick} style={{ cursor: 'pointer', height: '100%', position: 'relative' }}>
       <Stack gap="md" h="100%">
+        {direction && (
+          <Badge
+            variant="light"
+            color="cyan"
+            size="sm"
+            leftSection={<IconFlag size={12} />}
+            style={{
+              position: 'absolute',
+              top: 12,
+              right: 12,
+              zIndex: 10,
+              background: 'rgba(0, 217, 255, 0.9)',
+              color: '#0a1929',
+              border: '1px solid var(--vtb-cyan)',
+              fontWeight: 600,
+            }}
+          >
+            {direction}
+          </Badge>
+        )}
+
         {image ? (
           <Image
             src={image}

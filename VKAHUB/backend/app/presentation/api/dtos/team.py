@@ -10,6 +10,7 @@ class CreateTeamRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     description: Optional[str] = None
     image_url: Optional[str] = None
+    direction: str = Field(..., min_length=1, max_length=100, description="Team direction: CTF, Hackathon, etc.")
 
 
 class UpdateTeamRequest(BaseModel):
@@ -17,6 +18,7 @@ class UpdateTeamRequest(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     description: Optional[str] = None
     image_url: Optional[str] = None
+    direction: Optional[str] = Field(None, min_length=1, max_length=100, description="Team direction: CTF, Hackathon, etc.")
 
 
 class TeamMemberResponse(BaseModel):
@@ -38,6 +40,7 @@ class TeamResponse(BaseModel):
     name: str
     description: Optional[str] = None
     image_url: Optional[str] = None
+    direction: Optional[str] = None
     captain_id: Optional[int] = None
     members: Optional[List['TeamMemberResponse']] = None
     created_at: datetime

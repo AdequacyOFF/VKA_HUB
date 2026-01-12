@@ -4,58 +4,61 @@
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Быстрый старт
 
-### Prerequisites
-- **Docker Desktop** (includes Docker Compose)
+### Требования
+- **Docker Desktop** (включает Docker Compose)
 - **Git**
 
-### Get Started (2 commands)
+### Запуск (2 команды)
 
 ```bash
 git clone <repository-url>
 cd VKAHUB
-./start.sh
+make dev    # Режим разработки с автоперезагрузкой
 ```
 
-**That's it!** Open http://localhost:5173 in your browser.
-
-The script automatically:
-- ✅ Checks Docker is running
-- ✅ Creates `.env` files from templates
-- ✅ Starts all services (PostgreSQL, Backend, Frontend, Adminer)
-- ✅ Runs database migrations
-- ✅ Enables hot reload for both frontend and backend
+**Готово!** Откройте в браузере:
+- Frontend: http://localhost:3001 (DEV режим)
+- Backend API: http://localhost:8000
+- Документация API: http://localhost:8000/docs
 
 ---
 
-## 📝 Daily Usage
+## 📝 Ежедневное использование
 
 ```bash
-# Start everything
-./start.sh
+# Запуск (режим разработки, рекомендуется)
+make dev
 
-# Stop everything
-./stop.sh
+# Запуск (продакшн режим)
+make prod-up
 
-# View logs
-docker compose logs -f
+# Остановка
+make dev-down      # или make prod-down
 
-# Restart a service
-docker compose restart backend
-docker compose restart frontend
+# Просмотр логов
+make logs
+
+# Перезапуск
+make restart
+
+# Все команды
+make help
 ```
+
+📖 **Полная документация:** см. [RUNBOOK_RU.md](./RUNBOOK_RU.md)
 
 ---
 
 ## 🌐 Service URLs
 
-| Service | URL | Hot Reload |
-|---------|-----|------------|
-| **Frontend** | http://localhost:5173 | ✅ Yes |
-| **Backend** | http://localhost:8000 | ✅ Yes |
-| **API Docs** | http://localhost:8000/docs | N/A |
-| **DB Admin** | http://localhost:8080 | N/A |
+| Service | DEV режим | PROD режим | Hot Reload |
+|---------|-----------|------------|------------|
+| **Frontend** | http://localhost:3001 | http://localhost:3000 | ✅ Yes (DEV) |
+| **Backend** | http://localhost:8000 | http://localhost:8000 | ✅ Yes (DEV) |
+| **API Docs** | http://localhost:8000/docs | http://localhost:8000/docs | N/A |
+| **DB Admin** | http://localhost:8080 | http://localhost:8080 | N/A |
 
 ---
 

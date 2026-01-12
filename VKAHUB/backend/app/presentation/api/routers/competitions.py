@@ -1,6 +1,6 @@
 """Competitions router"""
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, File, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 
@@ -18,7 +18,7 @@ from app.presentation.api.dtos.competition import (
 from app.infrastructure.repositories.competition_repository_impl import CompetitionRepositoryImpl
 from app.infrastructure.repositories.team_repository_impl import TeamRepositoryImpl
 from app.domain.models.competition import Competition
-from app.domain.models.competition_report import CompetitionReport
+from app.domain.models.competition_report import CompetitionReport, CompetitionResult
 from app.domain.models.competition_registration import CompetitionRegistration
 from pydantic import BaseModel, Field
 from datetime import datetime
@@ -66,6 +66,7 @@ def build_competition_response(comp: Competition) -> CompetitionResponse:
         registration_deadline=comp.registration_deadline,
         description=comp.description,
         other_type_description=getattr(comp, 'other_type_description', None),
+        organizer=getattr(comp, 'organizer', None),
         min_team_size=getattr(comp, 'min_team_size', 2),
         max_team_size=getattr(comp, 'max_team_size', 5),
         case_file_url=comp.case_file_url,
@@ -250,11 +251,50 @@ async def apply_to_competition(
                 detail=f"User {member_id} is not a member of team {team.name}"
             )
 
+    # Check if team is already registered for this competition
+    from sqlalchemy import select, and_
+    existing_registration_result = await db.execute(
+        select(CompetitionRegistration)
+        .where(and_(
+            CompetitionRegistration.competition_id == competition_id,
+            CompetitionRegistration.team_id == request.team_id
+        ))
+    )
+    existing_registration = existing_registration_result.scalar_one_or_none()
+    if existing_registration:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Team '{team.name}' is already registered for this competition"
+        )
+
+    # Validate case_id for hackathons
+    if competition.type == 'hackathon':
+        if not request.case_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Case selection is required for hackathon competitions"
+            )
+        # Verify case exists and belongs to this competition
+        from app.domain.models.competition_case import CompetitionCase
+        result = await db.execute(
+            select(CompetitionCase)
+            .where(CompetitionCase.id == request.case_id)
+            .where(CompetitionCase.competition_id == competition_id)
+        )
+        case = result.scalar_one_or_none()
+        if not case:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Selected case not found or does not belong to this competition"
+            )
+
     # Create registration
     registration = await competition_repo.create_registration({
         "competition_id": competition_id,
         "team_id": request.team_id,
         "member_ids": request.member_ids,
+        "case_id": request.case_id,
+        "address": request.address,
         "status": "pending"
     })
     await db.commit()
@@ -269,10 +309,12 @@ async def apply_to_competition(
 # ===== Competition Report DTOs =====
 class SubmitCompetitionReportRequest(BaseModel):
     """Request to submit competition report"""
+    result: str = Field(..., description="Competition result: 1st_place, 2nd_place, 3rd_place, finalist, semi_finalist, did_not_pass")
     git_link: str = Field(..., description="Link to git repository")
+    project_url: Optional[str] = Field(None, description="Link to deployed project (optional)")
     presentation_url: str = Field(..., description="PDF or PowerPoint presentation URL")
     brief_summary: str = Field(..., min_length=50, description="Brief summary of the competition experience")
-    placement: Optional[int] = Field(None, ge=1, description="Competition placement (1st, 2nd, 3rd, etc.)")
+    placement: Optional[int] = Field(None, ge=1, description="Competition placement (1st, 2nd, 3rd, etc.) - deprecated")
     technologies_used: Optional[str] = None
     individual_contributions: Optional[str] = None
     team_evaluation: Optional[str] = None
@@ -285,7 +327,9 @@ class CompetitionReportResponse(BaseModel):
     registration_id: int
     team_name: str
     competition_name: str
+    result: str
     git_link: str
+    project_url: Optional[str]
     presentation_url: str
     brief_summary: str
     placement: Optional[int]
@@ -298,6 +342,28 @@ class CompetitionReportResponse(BaseModel):
 
 
 # ===== Competition Report Endpoints =====
+
+@router.post("/reports/upload-presentation")
+async def upload_presentation(
+    file: UploadFile = File(...),
+    current_user = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Upload presentation file for competition report (PDF or PowerPoint)"""
+    from app.infrastructure.storage.file_handler import save_file, validate_file_type
+
+    # Validate file type - only PDF and PowerPoint files allowed
+    allowed_extensions = ['pdf', 'ppt', 'pptx']
+    validate_file_type(file, allowed_extensions)
+
+    # Save file
+    file_url = await save_file(file, 'presentations')
+
+    return {
+        "message": "Presentation uploaded successfully",
+        "file_url": file_url
+    }
+
 
 @router.post("/{competition_id}/registrations/{registration_id}/report")
 async def submit_competition_report(
@@ -345,10 +411,21 @@ async def submit_competition_report(
             detail="Report already submitted for this registration"
         )
 
+    # Validate result enum
+    try:
+        result_enum = CompetitionResult(request.result)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid result. Must be one of: {', '.join([r.value for r in CompetitionResult])}"
+        )
+
     # Create report
     report = CompetitionReport(
         registration_id=registration_id,
+        result=result_enum,
         git_link=request.git_link,
+        project_url=request.project_url,
         presentation_url=request.presentation_url,
         brief_summary=request.brief_summary,
         placement=request.placement,
@@ -413,7 +490,9 @@ async def get_competition_reports(
                 registration_id=report.registration_id,
                 team_name=team_name,
                 competition_name=comp.name,
+                result=report.result.value if report.result else "did_not_pass",
                 git_link=report.git_link,
+                project_url=report.project_url,
                 presentation_url=report.presentation_url,
                 brief_summary=report.brief_summary,
                 placement=report.placement,
@@ -467,7 +546,9 @@ async def get_my_team_reports(
                 registration_id=report.registration_id,
                 team_name=team.name,
                 competition_name=comp.name,
+                result=report.result.value if report.result else "did_not_pass",
                 git_link=report.git_link,
+                project_url=report.project_url,
                 presentation_url=report.presentation_url,
                 brief_summary=report.brief_summary,
                 placement=report.placement,
@@ -485,16 +566,66 @@ async def get_my_team_reports(
     }
 
 
+@router.get("/my-teams/completed-competitions")
+async def get_completed_competitions_for_my_teams(
+    current_user = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get list of completed competitions that teams captained by current user participated in"""
+    from sqlalchemy import select
+    from datetime import date
+
+    team_repo = TeamRepositoryImpl(db)
+    teams = await team_repo.get_teams_by_captain(current_user.id)
+
+    completed_competitions = []
+    for team in teams:
+        # Get registrations for this team where competition has ended
+        result = await db.execute(
+            select(CompetitionRegistration, Competition)
+            .join(Competition, CompetitionRegistration.competition_id == Competition.id)
+            .where(CompetitionRegistration.team_id == team.id)
+            .where(Competition.end_date < date.today())  # Only completed competitions
+        )
+
+        registrations_data = result.all()
+        for registration, competition in registrations_data:
+            # Check if report already submitted
+            report_check = await db.execute(
+                select(CompetitionReport).where(CompetitionReport.registration_id == registration.id)
+            )
+            has_report = report_check.scalar_one_or_none() is not None
+
+            completed_competitions.append({
+                "registration_id": registration.id,
+                "competition_id": competition.id,
+                "competition_name": competition.name,
+                "competition_type": competition.type,
+                "team_id": team.id,
+                "team_name": team.name,
+                "end_date": competition.end_date.isoformat(),
+                "has_report": has_report
+            })
+
+    return {
+        "total": len(completed_competitions),
+        "competitions": completed_competitions
+    }
+
+
 @router.get("/{competition_id}/reports/generate")
 async def generate_competition_report(
     competition_id: int,
     current_user = Depends(require_moderator),
     db: AsyncSession = Depends(get_db)
 ):
-    """Generate downloadable competition report (moderator only)"""
+    """Generate downloadable competition report in DOCX format using template (moderator only)"""
     from sqlalchemy import select
     from fastapi.responses import StreamingResponse
-    import io
+    from app.domain.models.competition_team_member import CompetitionTeamMember
+    from app.infrastructure.repositories.user_repository_impl import UserRepositoryImpl
+    from app.infrastructure.storage.template_report_generator import TemplateReportGenerator
+    import os
 
     try:
         # Verify competition exists
@@ -506,68 +637,94 @@ async def generate_competition_report(
                 detail="Competition not found"
             )
 
-        # Get all reports for this competition
-        result = await db.execute(
-            select(CompetitionReport, CompetitionRegistration)
-            .join(CompetitionRegistration, CompetitionReport.registration_id == CompetitionRegistration.id)
+        # Get all registrations for this competition
+        registrations_result = await db.execute(
+            select(CompetitionRegistration)
             .where(CompetitionRegistration.competition_id == competition_id)
+            .order_by(CompetitionRegistration.applied_at.asc())
         )
+        registrations = registrations_result.scalars().all()
 
-        reports_data = result.all()
-
-        # Create a simple text report (in production, use python-docx for Word documents)
-        report_content = f"""
-ОТЧЕТ ПО СОРЕВНОВАНИЮ
-{'=' * 80}
-
-Название: {competition.name}
-Тип: {competition.type}
-Дата проведения: {competition.start_date.strftime('%d.%m.%Y')} - {competition.end_date.strftime('%d.%m.%Y')}
-
-{'=' * 80}
-ОТЧЕТЫ КОМАНД
-{'=' * 80}
-
-"""
-
+        # Collect participant data
         team_repo = TeamRepositoryImpl(db)
+        user_repo = UserRepositoryImpl(db)
 
-        for idx, (report, registration) in enumerate(reports_data, 1):
+        registrations_data = []
+        for registration in registrations:
             team = await team_repo.get_by_id(registration.team_id)
-            team_name = team.name if team else "Unknown"
+            if not team:
+                continue
 
-            report_content += f"""
-{idx}. КОМАНДА: {team_name}
-{'-' * 80}
-Место: {report.placement if report.placement else 'Не указано'}
-Дата подачи: {report.submitted_at.strftime('%d.%m.%Y %H:%M')}
+            # Get team members for this registration
+            members_result = await db.execute(
+                select(CompetitionTeamMember)
+                .where(CompetitionTeamMember.registration_id == registration.id)
+            )
+            members = members_result.scalars().all()
 
-Git репозиторий: {report.git_link}
-Презентация: {report.presentation_url}
+            members_data = []
+            for member in members:
+                user = await user_repo.get_by_id(member.user_id)
+                if user:
+                    members_data.append({
+                        'rank': user.rank,
+                        'last_name': user.last_name,
+                        'first_name': user.first_name,
+                        'middle_name': user.middle_name,
+                        'position': user.position
+                    })
 
-Краткое резюме:
-{report.brief_summary}
+            registrations_data.append({
+                'members': members_data,
+                'address': registration.address
+            })
 
-"""
-            if report.technologies_used:
-                report_content += f"Использованные технологии:\n{report.technologies_used}\n\n"
+        # Prepare competition data
+        competition_data = {
+            'name': competition.name,
+            'type': competition.type,
+            'organizer': competition.organizer,
+            'start_date': competition.start_date,
+            'end_date': competition.end_date
+        }
 
-            if report.problems_faced:
-                report_content += f"Проблемы и сложности:\n{report.problems_faced}\n\n"
+        # Use template-based generator
+        template_path = '/app/raport_template.docx'
+        if not os.path.exists(template_path):
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Report template not found"
+            )
 
-            report_content += "\n"
+        generator = TemplateReportGenerator(template_path)
+        buffer = generator.generate(competition_data, registrations_data)
 
-        # Convert to bytes
-        buffer = io.BytesIO()
-        buffer.write(report_content.encode('utf-8'))
-        buffer.seek(0)
+        # Build filename: Рапорт_<Type>_<Name>.docx
+        from urllib.parse import quote
+        from app.infrastructure.storage.template_report_generator import sanitize_filename
+
+        # Map competition type to Russian
+        type_mapping = {
+            'hackathon': 'Хакатон',
+            'CTF': 'CTF',
+            'other': competition.other_type_description if hasattr(competition, 'other_type_description') and competition.other_type_description else 'Другое'
+        }
+        comp_type = type_mapping.get(competition.type, 'Другое')
+
+        # Sanitize individual components
+        safe_type = sanitize_filename(comp_type, max_length=50)
+        safe_name = sanitize_filename(competition.name, max_length=80)
+
+        # Build final filename
+        filename = f"Рапорт_{safe_type}_{safe_name}.docx"
+        encoded_filename = quote(filename)
 
         # Return as downloadable file
         return StreamingResponse(
             buffer,
-            media_type="text/plain",
+            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             headers={
-                "Content-Disposition": f"attachment; filename=competition_report_{competition_id}_{datetime.now().strftime('%Y%m%d')}.txt"
+                "Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"
             }
         )
 
@@ -578,3 +735,380 @@ Git репозиторий: {report.git_link}
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error generating report: {str(e)}"
         )
+
+        # Add blank line
+        doc.add_paragraph()
+
+        # Add title "Рапорт"
+        title = doc.add_paragraph()
+        title_run = title.add_run('Рапорт')
+        title_run.bold = True
+        title_run.font.size = Pt(14)
+        title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+        # Add blank line
+        doc.add_paragraph()
+
+        # Build competition description with organizer
+        competition_desc = f"«{competition.name}»"
+        if competition.organizer:
+            competition_desc += f" от {competition.organizer}"
+
+        # Generate date/time schedule based on weekdays and weekends
+        # Month translation dict
+        months = {
+            'january': 'января', 'february': 'февраля', 'march': 'марта',
+            'april': 'апреля', 'may': 'мая', 'june': 'июня',
+            'july': 'июля', 'august': 'августа', 'september': 'сентября',
+            'october': 'октября', 'november': 'ноября', 'december': 'декабря'
+        }
+
+        def format_russian_date(date_obj):
+            """Format date in Russian"""
+            date_str = date_obj.strftime('%d %B').lower()
+            for eng, rus in months.items():
+                date_str = date_str.replace(eng, rus)
+            return date_str
+
+        # Build time schedule string
+        start_date = competition.start_date
+        end_date = competition.end_date
+
+        # Generate schedule parts for each day range
+        schedule_parts = []
+        current = start_date
+        range_start = None
+        range_start_time = None
+
+        while current <= end_date:
+            # Determine if weekday (Mon-Fri = 0-4) or weekend (Sat-Sun = 5-6)
+            is_weekend = current.weekday() >= 5
+            time_start = "09:00" if is_weekend else "16:00"
+            time_end = "21:00"
+
+            if range_start is None:
+                # Start new range
+                range_start = current
+                range_start_time = time_start
+            elif range_start_time != time_start:
+                # Time changed, close previous range and start new one
+                if range_start == current - timedelta(days=1):
+                    # Single day range
+                    prev_date = current - timedelta(days=1)
+                    schedule_parts.append(
+                        f"с {range_start_time} до {time_end} {format_russian_date(prev_date)}"
+                    )
+                else:
+                    # Multi-day range
+                    prev_date = current - timedelta(days=1)
+                    schedule_parts.append(
+                        f"с {range_start_time} до {time_end} с {format_russian_date(range_start)} до {format_russian_date(prev_date)}"
+                    )
+
+                range_start = current
+                range_start_time = time_start
+
+            current += timedelta(days=1)
+
+        # Close final range
+        if range_start:
+            if range_start == end_date:
+                # Single day
+                schedule_parts.append(
+                    f"с {range_start_time} до 21:00 {format_russian_date(end_date)}"
+                )
+            else:
+                # Multi-day
+                schedule_parts.append(
+                    f"с {range_start_time} до 21:00 с {format_russian_date(range_start)} до {format_russian_date(end_date)} {end_date.year}"
+                )
+
+        schedule_text = ", ".join(schedule_parts)
+
+        # Add main text paragraph
+        intro_text = (
+            f"В соответствии с планом методической деятельности \n"
+            f"ВКА имени А.Ф.Можайского на {start_date.year}/{start_date.year + 1} учебный год прошу Вашего ходатайства "
+            f"перед вышестоящим командованием об организации участия курсантов 6 факультета "
+            f"в онлайн-соревнованиях по продуктовому программированию (быстрая разработка программного обеспечения) "
+            f"{competition_desc} {schedule_text} года, "
+            f"(в соответствии с графиком проведения соревнований). "
+        )
+        intro = doc.add_paragraph(intro_text)
+        intro.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+
+        # Add second paragraph
+        second_para = doc.add_paragraph(
+            'Учебные занятия будут проведены в соответствии с индивидуальным планом. '
+            'Список курсантов, планируемых к участию в онлайн-соревнованиях:  '
+        )
+
+        # Collect all participants with their team info
+        team_repo = TeamRepositoryImpl(db)
+        user_repo = UserRepositoryImpl(db)
+
+        participant_counter = 1
+
+        for registration in registrations:
+            team = await team_repo.get_by_id(registration.team_id)
+            if not team:
+                continue
+
+            # Get team members for this registration
+            members_result = await db.execute(
+                select(CompetitionTeamMember)
+                .where(CompetitionTeamMember.registration_id == registration.id)
+            )
+            members = members_result.scalars().all()
+
+            # Add each member to the list
+            for member in members:
+                user = await user_repo.get_by_id(member.user_id)
+                if user:
+                    rank = user.rank if user.rank else 'Рядовой'
+                    position = user.position if user.position else ''
+                    last_name = user.last_name if user.last_name else ''
+                    first_initial = user.first_name[0] + '.' if user.first_name else ''
+                    middle_initial = user.middle_name[0] + '.' if user.middle_name else ''
+
+                    member_line = f"{participant_counter}. {rank} {last_name} {first_initial}{middle_initial}"
+                    if position:
+                        member_line += f" ({position})"
+                    member_line += "."
+
+                    doc.add_paragraph(member_line)
+                    participant_counter += 1
+
+            # Add location for this team
+            location_text = f"Место проведения: {registration.address}." if registration.address else "Место проведения: г. Санкт-Петербург, Лыжный пер., 4к3."
+            doc.add_paragraph(location_text)
+
+        # Add blank lines for spacing
+        doc.add_paragraph()
+        doc.add_paragraph()
+        doc.add_paragraph()
+        doc.add_paragraph()
+        doc.add_paragraph()
+        doc.add_paragraph()
+
+        # Add responsible person
+        doc.add_paragraph("Ответственный: полковник Дудкин Андрей Сергеевич.")
+
+        doc.add_paragraph()
+
+        # Add first signature block
+        doc.add_paragraph("Начальник 61 кафедры ")
+        doc.add_paragraph("полковник")
+        sig1_name = doc.add_paragraph()
+        sig1_name.add_run(" Д.Бирюков")
+        doc.add_paragraph(f"«__» ___________ {datetime.now().year} г.")
+
+        doc.add_paragraph()
+
+        # Add addressee for second signature (two lines)
+        doc.add_paragraph("Заместителю начальника академии ")
+        doc.add_paragraph("по учебной и научной работе")
+
+        doc.add_paragraph()
+
+        # Add endorsement text
+        doc.add_paragraph("Ходатайствую по существу рапорта полковника Бирюкова Д.Н.")
+
+        doc.add_paragraph()
+
+        # Add second signature block
+        doc.add_paragraph("Начальник 6 факультета ")
+        doc.add_paragraph("полковник")
+        sig2_name = doc.add_paragraph()
+        sig2_name.add_run(" А.Девяткин")
+        doc.add_paragraph(f"«__» ___________ {datetime.now().year} г.")
+
+        # Save to buffer
+        buffer = io.BytesIO()
+        doc.save(buffer)
+        buffer.seek(0)
+
+        # URL-encode filename for proper UTF-8 support
+        from urllib.parse import quote
+        filename = f"raport_{competition.name}_{datetime.now().strftime('%Y%m%d')}.docx"
+        encoded_filename = quote(filename)
+
+        # Return as downloadable file
+        return StreamingResponse(
+            buffer,
+            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            headers={
+                "Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"
+            }
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error generating report: {str(e)}"
+        )
+
+
+@router.get("/{competition_id}/registrations")
+async def get_competition_registrations(
+    competition_id: int,
+    db: AsyncSession = Depends(get_db)
+):
+    """Get all team registrations for a competition"""
+    from sqlalchemy import select
+    from app.infrastructure.repositories.user_repository_impl import UserRepositoryImpl
+
+    competition_repo = CompetitionRepositoryImpl(db)
+    competition = await competition_repo.get_by_id(competition_id)
+
+    if not competition:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Competition not found"
+        )
+
+    # Get all registrations for this competition
+    result = await db.execute(
+        select(CompetitionRegistration)
+        .where(CompetitionRegistration.competition_id == competition_id)
+        .order_by(CompetitionRegistration.applied_at.desc())
+    )
+    registrations = result.scalars().all()
+
+    # Build response with team details
+    team_repo = TeamRepositoryImpl(db)
+    user_repo = UserRepositoryImpl(db)
+    registrations_data = []
+
+    for registration in registrations:
+        team = await team_repo.get_by_id(registration.team_id)
+        if not team:
+            continue
+
+        # Get team members for this registration
+        from app.domain.models.competition_team_member import CompetitionTeamMember
+        members_result = await db.execute(
+            select(CompetitionTeamMember)
+            .where(CompetitionTeamMember.registration_id == registration.id)
+        )
+        members = members_result.scalars().all()
+
+        # Get user details for each member
+        members_data = []
+        for member in members:
+            user = await user_repo.get_by_id(member.user_id)
+            if user:
+                members_data.append({
+                    "id": member.id,
+                    "user_id": user.id,
+                    "first_name": user.first_name,
+                    "last_name": user.last_name,
+                    "middle_name": user.middle_name,
+                    "rank": user.rank,
+                    "position": user.position,
+                    "avatar": user.avatar_url
+                })
+
+        # Get captain details
+        captain = None
+        if team.captain_id:
+            captain_user = await user_repo.get_by_id(team.captain_id)
+            if captain_user:
+                captain = {
+                    "id": captain_user.id,
+                    "first_name": captain_user.first_name,
+                    "last_name": captain_user.last_name,
+                    "login": captain_user.login
+                }
+
+        registrations_data.append({
+            "id": registration.id,
+            "team_id": team.id,
+            "team_name": team.name,
+            "team_description": team.description,
+            "team_image": team.image_url,
+            "captain": captain,
+            "members": members_data,
+            "address": registration.address,
+            "status": registration.status,
+            "applied_at": registration.applied_at.isoformat(),
+            "case_id": registration.case_id
+        })
+
+    return {
+        "total": len(registrations_data),
+        "registrations": registrations_data
+    }
+
+
+@router.delete("/{competition_id}/registrations/{registration_id}")
+async def remove_team_from_competition(
+    competition_id: int,
+    registration_id: int,
+    current_user = Depends(require_moderator),
+    db: AsyncSession = Depends(get_db)
+):
+    """Remove a team from competition (moderator only) and send notifications to all team members"""
+    from sqlalchemy import select
+    from app.domain.models.notification import Notification
+    from app.domain.models.competition_team_member import CompetitionTeamMember
+    from app.infrastructure.repositories.user_repository_impl import UserRepositoryImpl
+
+    competition_repo = CompetitionRepositoryImpl(db)
+
+    # Verify competition exists
+    competition = await competition_repo.get_by_id(competition_id)
+    if not competition:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Competition not found"
+        )
+
+    # Get registration
+    result = await db.execute(
+        select(CompetitionRegistration)
+        .where(CompetitionRegistration.id == registration_id)
+        .where(CompetitionRegistration.competition_id == competition_id)
+    )
+    registration = result.scalar_one_or_none()
+
+    if not registration:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Registration not found"
+        )
+
+    # Get team
+    team_repo = TeamRepositoryImpl(db)
+    team = await team_repo.get_by_id(registration.team_id)
+    team_name = team.name if team else "Unknown"
+
+    # Get all team members who were registered
+    members_result = await db.execute(
+        select(CompetitionTeamMember)
+        .where(CompetitionTeamMember.registration_id == registration.id)
+    )
+    team_members = members_result.scalars().all()
+
+    # Create notifications for all team members
+    user_repo = UserRepositoryImpl(db)
+    for member in team_members:
+        notification = Notification(
+            user_id=member.user_id,
+            type="team_removed",
+            title="Команда удалена из соревнования",
+            message=f"Ваша команда '{team_name}' была удалена модератором из соревнования '{competition.name}'. По всем вопросам обращайтесь к модератору.",
+            read=False
+        )
+        db.add(notification)
+
+    # Delete the registration (cascade will delete team members)
+    await db.delete(registration)
+    await db.commit()
+
+    return {
+        "message": "Team removed successfully",
+        "notifications_sent": len(team_members)
+    }

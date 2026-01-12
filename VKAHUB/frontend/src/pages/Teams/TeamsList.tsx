@@ -97,6 +97,7 @@ export function TeamsList() {
                 name={team.name}
                 description={team.description || 'Описание отсутствует'}
                 image={team.image_url || undefined}
+                direction={team.direction}
                 onClick={() => navigate(`/teams/${team.id}`)}
               />
               </Grid.Col>

@@ -15,7 +15,16 @@ alembic upgrade head
 
 echo "✅ Migrations complete!"
 
-echo "🚀 Starting application..."
+# Determine reload flag based on environment
+if [ "${APP_ENV:-prod}" = "dev" ]; then
+    echo "🔧 Starting application in DEV mode (with auto-reload)..."
+    RELOAD_FLAG="--reload"
+else
+    echo "🚀 Starting application in PROD mode..."
+    RELOAD_FLAG=""
+fi
+
 cd /app
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+uvicorn app.main:app --host 0.0.0.0 --port 8000 $RELOAD_FLAG
+
 exec "$@"

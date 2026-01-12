@@ -46,4 +46,9 @@ export const teamsApi = {
     }
     return [data.team];
   },
+
+  getTeamStatistics: async (teamId: number): Promise<{ team_id: number; competitions_participated: number; prizes_won: number }> => {
+    const response = await axiosInstance.get(`/api/teams/${teamId}/statistics`);
+    return response.data;
+  },
 };

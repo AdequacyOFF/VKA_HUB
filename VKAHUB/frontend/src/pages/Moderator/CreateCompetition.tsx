@@ -24,8 +24,10 @@ import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { IconTrash, IconPlus, IconUpload } from '@tabler/icons-react';
 import { useNavigate } from 'react-router-dom';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { competitionsApi } from '../../api/competitions';
 import { VTBCard } from '../../components/common/VTBCard';
+import { invalidateCompetitionQueries } from '../../utils/cacheInvalidation';
 
 interface Stage {
   stage_number: number;
@@ -53,15 +55,17 @@ const TECH_STACK_OPTIONS = [
 
 export default function CreateCompetition() {
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
+  const queryClient = useQueryClient();
   const [stages, setStages] = useState<Stage[]>([]);
   const [cases, setCases] = useState<Case[]>([]);
+  const [imageFile, setImageFile] = useState<File | null>(null);
 
   const form = useForm({
     initialValues: {
       type: '',
       name: '',
       description: '',
+      organizer: '',
       other_type_description: '',
       link: '',
       image_url: '',
@@ -74,6 +78,7 @@ export default function CreateCompetition() {
     validate: {
       type: (value) => (!value ? 'Тип соревнования обязателен' : null),
       name: (value) => (!value ? 'Название обязательно' : null),
+      organizer: (value) => (!value ? 'Организатор обязателен' : null),
       start_date: (value) => (!value ? 'Дата начала обязательна' : null),
       end_date: (value) => (!value ? 'Дата окончания обязательна' : null),
       registration_deadline: (value) => (!value ? 'Дедлайн регистрации обязателен' : null),
@@ -133,7 +138,30 @@ export default function CreateCompetition() {
     setCases(newCases);
   };
 
-  const handleSubmit = async (values: typeof form.values) => {
+  const createCompetitionMutation = useMutation({
+    mutationFn: (competitionData: any) => competitionsApi.createCompetition(competitionData),
+    onSuccess: () => {
+      // Invalidate competitions list to show the new competition
+      invalidateCompetitionQueries({ queryClient });
+
+      notifications.show({
+        title: 'Успешно',
+        message: 'Соревнование успешно создано',
+        color: 'green',
+      });
+
+      navigate('/moderator/competitions');
+    },
+    onError: (error: any) => {
+      notifications.show({
+        title: 'Ошибка',
+        message: error.response?.data?.detail || 'Не удалось создать соревнование',
+        color: 'red',
+      });
+    },
+  });
+
+  const handleSubmit = (values: typeof form.values) => {
     if (values.type === 'hackathon' && cases.length === 0) {
       notifications.show({
         title: 'Ошибка валидации',
@@ -169,41 +197,28 @@ export default function CreateCompetition() {
       }
     }
 
-    setLoading(true);
-    try {
-      const competitionData = {
-        ...values,
-        stages: stages.map(stage => ({
-          stage_number: stage.stage_number,
-          name: stage.name,
-          description: stage.description,
-          start_date: stage.start_date!.toISOString().split('T')[0],
-          end_date: stage.end_date!.toISOString().split('T')[0],
-        })),
-        cases: values.type === 'hackathon' ? cases : [],
-        start_date: values.start_date!.toISOString().split('T')[0],
-        end_date: values.end_date!.toISOString().split('T')[0],
-        registration_deadline: values.registration_deadline!.toISOString(),
-      };
+    // TODO: If imageFile is provided, upload it to storage and get URL
+    // For now, we'll use the image_url field from form or empty string
+    const imageUrl = values.image_url || '';
 
-      await competitionsApi.createCompetition(competitionData);
+    const competitionData = {
+      ...values,
+      image_url: imageUrl,
+      organizer: values.organizer,
+      stages: stages.map(stage => ({
+        stage_number: stage.stage_number,
+        name: stage.name,
+        description: stage.description,
+        start_date: stage.start_date!.toISOString().split('T')[0],
+        end_date: stage.end_date!.toISOString().split('T')[0],
+      })),
+      cases: values.type === 'hackathon' ? cases : [],
+      start_date: values.start_date!.toISOString(),  // Now includes time
+      end_date: values.end_date!.toISOString(),  // Now includes time
+      registration_deadline: values.registration_deadline!.toISOString(),
+    };
 
-      notifications.show({
-        title: 'Успешно',
-        message: 'Соревнование успешно создано',
-        color: 'green',
-      });
-
-      navigate('/moderator/competitions');
-    } catch (error: any) {
-      notifications.show({
-        title: 'Ошибка',
-        message: error.response?.data?.detail || 'Не удалось создать соревнование',
-        color: 'red',
-      });
-    } finally {
-      setLoading(false);
-    }
+    createCompetitionMutation.mutate(competitionData);
   };
 
   return (
@@ -265,6 +280,15 @@ export default function CreateCompetition() {
                   />
                 </Grid.Col>
 
+                <Grid.Col span={12}>
+                  <TextInput
+                    label="Организатор"
+                    placeholder="напр., ПАО «ВТБ», ВКА имени А.Ф.Можайского"
+                    required
+                    {...form.getInputProps('organizer')}
+                  />
+                </Grid.Col>
+
                 <Grid.Col span={6}>
                   <TextInput
                     label="Ссылка (опционально)"
@@ -274,10 +298,14 @@ export default function CreateCompetition() {
                 </Grid.Col>
 
                 <Grid.Col span={6}>
-                  <TextInput
-                    label="URL изображения (опционально)"
-                    placeholder="https://..."
-                    {...form.getInputProps('image_url')}
+                  <FileInput
+                    label="Изображение соревнования (опционально)"
+                    placeholder="Выберите файл"
+                    accept="image/*"
+                    leftSection={<IconUpload size={16} />}
+                    value={imageFile}
+                    onChange={setImageFile}
+                    clearable
                   />
                 </Grid.Col>
               </Grid>
@@ -291,19 +319,21 @@ export default function CreateCompetition() {
 
               <Grid>
                 <Grid.Col span={4}>
-                  <DateInput
-                    label="Дата начала"
-                    placeholder="Выберите дату"
+                  <DateTimePicker
+                    label="Дата и время начала"
+                    placeholder="Выберите дату и время"
                     required
+                    valueFormat="DD.MM.YYYY HH:mm"
                     {...form.getInputProps('start_date')}
                   />
                 </Grid.Col>
 
                 <Grid.Col span={4}>
-                  <DateInput
-                    label="Дата окончания"
-                    placeholder="Выберите дату"
+                  <DateTimePicker
+                    label="Дата и время окончания"
+                    placeholder="Выберите дату и время"
                     required
+                    valueFormat="DD.MM.YYYY HH:mm"
                     {...form.getInputProps('end_date')}
                   />
                 </Grid.Col>
@@ -507,7 +537,7 @@ export default function CreateCompetition() {
               <Button variant="default" onClick={() => navigate('/moderator/competitions')}>
                 Отмена
               </Button>
-              <Button type="submit" loading={loading}>
+              <Button type="submit" loading={createCompetitionMutation.isPending}>
                 Создать соревнование
               </Button>
             </Group>

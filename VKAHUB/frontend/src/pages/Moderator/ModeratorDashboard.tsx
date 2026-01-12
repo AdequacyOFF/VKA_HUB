@@ -152,7 +152,7 @@ export function ModeratorDashboard() {
         </Grid>
 
         <Grid gutter="lg">
-          <Grid.Col span={{ base: 12, md: 6 }}>
+          <Grid.Col span={12}>
             <VTBCard variant="secondary">
               <Stack gap="lg">
                 <Title order={3} c="white">Рост платформы</Title>
@@ -209,7 +209,9 @@ export function ModeratorDashboard() {
               </Stack>
             </VTBCard>
           </Grid.Col>
+        </Grid>
 
+        <Grid gutter="lg">
           <Grid.Col span={{ base: 12, md: 6 }}>
             <VTBCard variant="secondary">
               <Stack gap="lg">
@@ -253,6 +255,26 @@ export function ModeratorDashboard() {
                         </div>
                       </Group>
                       <Text size="xl" fw={700} c="#22c55e">{stats.resolvedReports}</Text>
+                    </Group>
+                  </div>
+
+                  <div
+                    style={{
+                      padding: 16,
+                      background: 'rgba(239, 68, 68, 0.1)',
+                      border: '1px solid #ef4444',
+                      borderRadius: 12,
+                    }}
+                  >
+                    <Group justify="space-between">
+                      <Group>
+                        <IconX size={24} color="#ef4444" />
+                        <div>
+                          <Text fw={600} c="white">Отклонены</Text>
+                          <Text size="sm" c="dimmed">Всего за всё время</Text>
+                        </div>
+                      </Group>
+                      <Text size="xl" fw={700} c="#ef4444">{stats.rejectedReports}</Text>
                     </Group>
                   </div>
                 </Stack>
@@ -303,6 +325,26 @@ export function ModeratorDashboard() {
                         </div>
                       </Group>
                       <Text size="xl" fw={700} c="#22c55e">{stats.resolvedFeedback}</Text>
+                    </Group>
+                  </div>
+
+                  <div
+                    style={{
+                      padding: 16,
+                      background: 'rgba(239, 68, 68, 0.1)',
+                      border: '1px solid #ef4444',
+                      borderRadius: 12,
+                    }}
+                  >
+                    <Group justify="space-between">
+                      <Group>
+                        <IconX size={24} color="#ef4444" />
+                        <div>
+                          <Text fw={600} c="white">Отклонены</Text>
+                          <Text size="sm" c="dimmed">Всего за всё время</Text>
+                        </div>
+                      </Group>
+                      <Text size="xl" fw={700} c="#ef4444">{stats.rejectedFeedback}</Text>
                     </Group>
                   </div>
                 </Stack>

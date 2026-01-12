@@ -16,10 +16,11 @@ from .competition_stage import CompetitionStage
 from .competition_case import CompetitionCase
 from .competition_registration import CompetitionRegistration
 from .competition_team_member import CompetitionTeamMember
-from .competition_report import CompetitionReport
+from .competition_report import CompetitionReport, CompetitionResult
 from .moderator_report import ModeratorReport
 from .log import Log, ActivityType
 from .user_complaint import UserComplaint, ComplaintStatus
+from .notification import Notification
 
 __all__ = [
     "Base",
@@ -41,9 +42,11 @@ __all__ = [
     "CompetitionRegistration",
     "CompetitionTeamMember",
     "CompetitionReport",
+    "CompetitionResult",
     "ModeratorReport",
     "Log",
     "ActivityType",
     "UserComplaint",
     "ComplaintStatus",
+    "Notification",
 ]

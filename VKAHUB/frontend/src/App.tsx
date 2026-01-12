@@ -12,8 +12,10 @@ import './styles/glassmorphism.css';
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 5 * 60 * 1000,
-      refetchOnWindowFocus: false,
+      staleTime: 1 * 60 * 1000, // 1 minute (reduced from 5)
+      refetchOnWindowFocus: true, // Refetch when user returns to tab
+      refetchOnMount: true, // Always refetch on component mount
+      refetchOnReconnect: true, // Refetch when reconnecting to network
     },
   },
 });

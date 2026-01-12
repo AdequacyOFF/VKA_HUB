@@ -15,6 +15,8 @@ class CompetitionRegistration(Base):
     id = Column(Integer, primary_key=True, index=True)
     competition_id = Column(Integer, ForeignKey("competitions.id", ondelete="CASCADE"), nullable=False)
     team_id = Column(Integer, ForeignKey("teams.id", ondelete="CASCADE"), nullable=False)
+    case_id = Column(Integer, ForeignKey("competition_cases.id", ondelete="SET NULL"), nullable=True)  # For hackathon case selection
+    address = Column(Text, nullable=True)  # Location where team will participate from
     status = Column(String(50), default="pending")  # pending, approved, rejected
     result = Column(Text)  # Competition result/placement
     applied_at = Column(DateTime, server_default=func.now(), nullable=False)

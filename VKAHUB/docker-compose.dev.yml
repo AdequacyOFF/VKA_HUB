@@ -1,4 +1,19 @@
+# Docker Compose override for DEVELOPMENT mode
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+# Or simpler: make dev
+
 services:
+  backend:
+    # Enable DEV mode (auto-reload via APP_ENV=dev)
+    environment:
+      APP_ENV: dev
+      DEBUG: "True"
+
+    # Bind-mount source code for instant changes without rebuild
+    volumes:
+      - ./backend:/app
+      - static_uploads:/app/static/uploads
+
   frontend:
     build:
       context: ./frontend
@@ -10,7 +25,7 @@ services:
     ports:
       - "3001:3000"
     environment:
-      - VITE_API_URL=http://localhost:3000
+      - VITE_API_URL=http://localhost:8000
     command: npm run dev -- --host 0.0.0.0
     depends_on:
       - backend

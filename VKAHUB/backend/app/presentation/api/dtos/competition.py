@@ -28,11 +28,12 @@ class CreateCompetitionRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     link: Optional[str] = None
     image_url: Optional[str] = None
-    start_date: date
-    end_date: date
+    start_date: datetime
+    end_date: datetime
     registration_deadline: datetime
     description: Optional[str] = None
     other_type_description: Optional[str] = Field(None, max_length=255)
+    organizer: str = Field(..., min_length=1, max_length=500)  # Required organizer field
     min_team_size: int = Field(default=2, ge=1, le=10)
     max_team_size: int = Field(default=5, ge=1, le=10)
     case_file_url: Optional[str] = None
@@ -40,9 +41,9 @@ class CreateCompetitionRequest(BaseModel):
     stages: List[CompetitionStageRequest] = Field(default_factory=list)
     cases: List[CompetitionCaseRequest] = Field(default_factory=list)
 
-    @field_validator('registration_deadline')
+    @field_validator('start_date', 'end_date', 'registration_deadline')
     @classmethod
-    def validate_registration_deadline(cls, v):
+    def validate_datetimes(cls, v):
         if v is not None and v.tzinfo is not None:
             # Convert timezone-aware datetime to naive datetime in UTC
             return v.replace(tzinfo=None)
@@ -103,11 +104,12 @@ class UpdateCompetitionRequest(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     link: Optional[str] = None
     image_url: Optional[str] = None
-    start_date: Optional[date] = None
-    end_date: Optional[date] = None
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
     registration_deadline: Optional[datetime] = None
     description: Optional[str] = None
     other_type_description: Optional[str] = Field(None, max_length=255)
+    organizer: Optional[str] = Field(None, min_length=1, max_length=500)
     min_team_size: Optional[int] = Field(None, ge=1, le=10)
     max_team_size: Optional[int] = Field(None, ge=1, le=10)
     case_file_url: Optional[str] = None
@@ -115,9 +117,9 @@ class UpdateCompetitionRequest(BaseModel):
     stages: Optional[List[CompetitionStageRequest]] = None
     cases: Optional[List[CompetitionCaseRequest]] = None
 
-    @field_validator('registration_deadline')
+    @field_validator('start_date', 'end_date', 'registration_deadline')
     @classmethod
-    def validate_registration_deadline(cls, v):
+    def validate_datetimes(cls, v):
         if v is not None and v.tzinfo is not None:
             # Convert timezone-aware datetime to naive datetime in UTC
             return v.replace(tzinfo=None)
@@ -131,11 +133,12 @@ class CompetitionResponse(BaseModel):
     name: str
     link: Optional[str] = None
     image_url: Optional[str] = None
-    start_date: date
-    end_date: date
+    start_date: datetime
+    end_date: datetime
     registration_deadline: datetime
     description: Optional[str] = None
     other_type_description: Optional[str] = None
+    organizer: Optional[str] = None
     min_team_size: int
     max_team_size: int
     case_file_url: Optional[str] = None
@@ -151,6 +154,8 @@ class ApplyToCompetitionRequest(BaseModel):
     """Apply to competition request"""
     team_id: int
     member_ids: List[int] = Field(..., min_items=1)
+    case_id: Optional[int] = None  # Required for hackathon competitions
+    address: Optional[str] = None  # Location where team will participate from
 
 
 class TeamMemberResponse(BaseModel):
@@ -169,5 +174,6 @@ class RegistrationResponse(BaseModel):
     team_id: int
     status: str
     result: Optional[str] = None
+    address: Optional[str] = None
     applied_at: datetime
     team_members: List[TeamMemberResponse] = []

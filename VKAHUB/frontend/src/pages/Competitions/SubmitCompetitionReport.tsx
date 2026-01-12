@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   Container,
   Title,
@@ -7,101 +7,190 @@ import {
   Stack,
   TextInput,
   Textarea,
-  NumberInput,
   Alert,
   Group,
+  Select,
+  FileInput,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
-import { IconAlertCircle, IconFileText } from '@tabler/icons-react';
+import { IconAlertCircle, IconFileText, IconUpload, IconTrophy } from '@tabler/icons-react';
 import { VTBCard } from '../../components/common/VTBCard';
 import { VTBButton } from '../../components/common/VTBButton';
-import { api } from '../../api';
+import { competitionsApi } from '../../api/competitions';
 
-interface Competition {
-  id: number;
-  name: string;
-  end_date: string;
-}
-
-interface Registration {
-  id: number;
+interface CompletedCompetition {
+  registration_id: number;
+  competition_id: number;
+  competition_name: string;
+  competition_type: string;
+  team_id: number;
   team_name: string;
+  end_date: string;
   has_report: boolean;
 }
 
+const RESULT_OPTIONS = [
+  { value: '1st_place', label: '1 место' },
+  { value: '2nd_place', label: '2 место' },
+  { value: '3rd_place', label: '3 место' },
+  { value: 'finalist', label: 'Финалист' },
+  { value: 'semi_finalist', label: 'Полуфиналист' },
+  { value: 'did_not_pass', label: 'Не прошли' },
+];
+
 export default function SubmitCompetitionReport() {
-  const { competitionId, registrationId } = useParams<{ competitionId: string; registrationId: string }>();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [competition, setCompetition] = useState<Competition | null>(null);
-  const [registration, setRegistration] = useState<Registration | null>(null);
+  const [uploadingPresentation, setUploadingPresentation] = useState(false);
+  const [completedCompetitions, setCompletedCompetitions] = useState<CompletedCompetition[]>([]);
+  const [selectedCompetition, setSelectedCompetition] = useState<CompletedCompetition | null>(null);
 
   const form = useForm({
     initialValues: {
+      registration_id: '',
+      result: '',
       git_link: '',
+      project_url: '',
+      presentation_file: null as File | null,
       presentation_url: '',
       brief_summary: '',
-      placement: null as number | null,
       technologies_used: '',
       individual_contributions: '',
       team_evaluation: '',
       problems_faced: '',
     },
     validate: {
+      registration_id: (value) => (!value ? 'Выберите соревнование' : null),
+      result: (value) => (!value ? 'Выберите результат' : null),
       git_link: (value) => {
         if (!value) return 'Ссылка на GitHub обязательна';
         if (!/^https?:\/\/.+/.test(value)) return 'Введите корректный URL';
         return null;
       },
-      presentation_url: (value) => {
-        if (!value) return 'Ссылка на презентацию обязательна';
-        if (!/^https?:\/\/.+/.test(value)) return 'Введите корректный URL';
+      project_url: (value) => {
+        if (value && !/^https?:\/\/.+/.test(value)) return 'Введите корректный URL';
+        return null;
+      },
+      presentation_file: (value) => {
+        if (!value && !form.values.presentation_url) return 'Загрузите презентацию';
         return null;
       },
       brief_summary: (value) => {
-        if (!value) return 'Краткое резюме обязательно';
-        if (value.length < 50) return 'Резюме должно содержать минимум 50 символов';
-        return null;
-      },
-      placement: (value) => {
-        if (value !== null && value < 1) return 'Место должно быть положительным числом';
+        if (!value) return 'Описание обязательно';
+        if (value.length < 50) return 'Описание должно содержать минимум 50 символов';
         return null;
       },
     },
   });
 
   useEffect(() => {
-    const fetchData = async () => {
-      if (!competitionId || !registrationId) return;
-
+    const fetchCompletedCompetitions = async () => {
       try {
-        // Fetch competition details
-        const compResponse = await api.get(`/api/competitions/${competitionId}`);
-        setCompetition(compResponse.data);
-
-        // Check if report already submitted
-        // This would need an endpoint to check registration status
+        const response = await competitionsApi.getCompletedCompetitionsForMyTeams();
+        setCompletedCompetitions(response.competitions || []);
       } catch (error: any) {
         notifications.show({
           title: 'Ошибка',
-          message: error.response?.data?.detail || 'Не удалось загрузить данные',
+          message: error.response?.data?.detail || 'Не удалось загрузить список соревнований',
           color: 'red',
         });
       }
     };
 
-    fetchData();
-  }, [competitionId, registrationId]);
+    fetchCompletedCompetitions();
+  }, []);
+
+  const handleCompetitionSelect = (registrationId: string | null) => {
+    if (!registrationId) {
+      setSelectedCompetition(null);
+      form.setFieldValue('registration_id', '');
+      return;
+    }
+
+    const competition = completedCompetitions.find(
+      (c) => c.registration_id.toString() === registrationId
+    );
+
+    if (competition) {
+      setSelectedCompetition(competition);
+      form.setFieldValue('registration_id', registrationId);
+
+      if (competition.has_report) {
+        notifications.show({
+          title: 'Внимание',
+          message: 'Для этого соревнования уже был подан отчет',
+          color: 'yellow',
+        });
+      }
+    }
+  };
+
+  const handlePresentationUpload = async (file: File | null) => {
+    if (!file) {
+      form.setFieldValue('presentation_file', null);
+      form.setFieldValue('presentation_url', '');
+      return;
+    }
+
+    form.setFieldValue('presentation_file', file);
+    setUploadingPresentation(true);
+
+    try {
+      const response = await competitionsApi.uploadPresentation(file);
+      form.setFieldValue('presentation_url', response.file_url);
+      notifications.show({
+        title: 'Успех',
+        message: 'Презентация успешно загружена!',
+        color: 'teal',
+      });
+    } catch (error: any) {
+      notifications.show({
+        title: 'Ошибка',
+        message: error.response?.data?.detail || 'Не удалось загрузить презентацию',
+        color: 'red',
+      });
+      form.setFieldValue('presentation_file', null);
+    } finally {
+      setUploadingPresentation(false);
+    }
+  };
 
   const handleSubmit = async (values: typeof form.values) => {
-    if (!competitionId || !registrationId) return;
+    if (!selectedCompetition) {
+      notifications.show({
+        title: 'Ошибка',
+        message: 'Выберите соревнование',
+        color: 'red',
+      });
+      return;
+    }
+
+    if (selectedCompetition.has_report) {
+      notifications.show({
+        title: 'Ошибка',
+        message: 'Для этого соревнования уже был подан отчет',
+        color: 'red',
+      });
+      return;
+    }
 
     setLoading(true);
     try {
-      await api.post(
-        `/api/competitions/${competitionId}/registrations/${registrationId}/report`,
-        values
+      await competitionsApi.submitCompetitionReport(
+        selectedCompetition.competition_id,
+        selectedCompetition.registration_id,
+        {
+          result: values.result,
+          git_link: values.git_link,
+          project_url: values.project_url || undefined,
+          presentation_url: values.presentation_url,
+          brief_summary: values.brief_summary,
+          technologies_used: values.technologies_used || undefined,
+          individual_contributions: values.individual_contributions || undefined,
+          team_evaluation: values.team_evaluation || undefined,
+          problems_faced: values.problems_faced || undefined,
+        }
       );
 
       notifications.show({
@@ -110,7 +199,7 @@ export default function SubmitCompetitionReport() {
         color: 'teal',
       });
 
-      navigate(`/competitions/${competitionId}`);
+      navigate(`/competitions/${selectedCompetition.competition_id}`);
     } catch (error: any) {
       notifications.show({
         title: 'Ошибка',
@@ -122,39 +211,80 @@ export default function SubmitCompetitionReport() {
     }
   };
 
-  if (!competition) {
-    return (
-      <Container size="md" py="xl">
-        <Text c="white" ta="center">Загрузка...</Text>
-      </Container>
-    );
-  }
+  const competitionOptions = completedCompetitions.map((comp) => ({
+    value: comp.registration_id.toString(),
+    label: `${comp.competition_name} (${comp.team_name})${comp.has_report ? ' - Отчет уже подан' : ''}`,
+    disabled: comp.has_report,
+  }));
 
   return (
     <Container size="lg" py="xl">
       <Stack gap="xl">
         <div>
           <Title order={1} className="vtb-heading-hero">
-            <span className="vtb-gradient-text">Отчет по соревнованию</span>
+            <span className="vtb-gradient-text">Подать отчет по соревнованию</span>
           </Title>
           <Text size="lg" c="dimmed" mt="md">
-            {competition.name}
+            Заполните все обязательные поля для подачи отчета по завершенному соревнованию
           </Text>
         </div>
 
         <Alert icon={<IconAlertCircle />} color="blue" variant="light">
           <Text size="sm">
-            <strong>Обязательные поля:</strong> Ссылка на Git-репозиторий, презентация (PDF/PowerPoint) и краткое резюме о ходе соревнования.
+            <strong>Обязательные поля:</strong> Соревнование, результат, ссылка на GitHub, презентация и описание.
           </Text>
         </Alert>
 
         <VTBCard variant="primary">
           <form onSubmit={form.onSubmit(handleSubmit)}>
             <Stack gap="lg">
-              <Text fw={700} size="lg" c="white">Основные данные</Text>
+              <Text fw={700} size="lg" c="white">Выбор соревнования</Text>
+
+              <Select
+                label="Соревнование"
+                placeholder="Выберите завершенное соревнование"
+                data={competitionOptions}
+                size="md"
+                classNames={{ input: 'glass-input' }}
+                styles={{
+                  label: { color: '#ffffff', fontWeight: 600, marginBottom: 8 },
+                }}
+                {...form.getInputProps('registration_id')}
+                onChange={handleCompetitionSelect}
+                required
+                searchable
+              />
+
+              {selectedCompetition && (
+                <Alert color="cyan" variant="light">
+                  <Text size="sm">
+                    <strong>Команда:</strong> {selectedCompetition.team_name}
+                    <br />
+                    <strong>Дата окончания:</strong> {new Date(selectedCompetition.end_date).toLocaleDateString('ru-RU')}
+                  </Text>
+                </Alert>
+              )}
+
+              <Text fw={700} size="lg" c="white" mt="md">Результаты участия</Text>
+
+              <Select
+                label="Результат"
+                placeholder="Выберите результат"
+                data={RESULT_OPTIONS}
+                size="md"
+                classNames={{ input: 'glass-input' }}
+                styles={{
+                  label: { color: '#ffffff', fontWeight: 600, marginBottom: 8 },
+                }}
+                leftSection={<IconTrophy size={18} />}
+                {...form.getInputProps('result')}
+                required
+              />
+
+              <Text fw={700} size="lg" c="white" mt="md">Проектные материалы</Text>
 
               <TextInput
-                label="Ссылка на Git-репозиторий"
+                label="Ссылка на GitHub"
                 placeholder="https://github.com/username/project"
                 leftSection={<IconFileText size={18} />}
                 size="md"
@@ -167,22 +297,41 @@ export default function SubmitCompetitionReport() {
               />
 
               <TextInput
-                label="Ссылка на презентацию (PDF/PowerPoint)"
-                placeholder="https://drive.google.com/... или другой сервис"
+                label="Ссылка на развернутый проект (опционально)"
+                placeholder="https://myproject.com"
                 leftSection={<IconFileText size={18} />}
                 size="md"
                 classNames={{ input: 'glass-input' }}
                 styles={{
                   label: { color: '#ffffff', fontWeight: 600, marginBottom: 8 },
                 }}
-                {...form.getInputProps('presentation_url')}
+                {...form.getInputProps('project_url')}
+              />
+
+              <FileInput
+                label="Презентация (PDF или PowerPoint)"
+                placeholder="Выберите файл"
+                leftSection={<IconUpload size={18} />}
+                size="md"
+                classNames={{ input: 'glass-input' }}
+                styles={{
+                  label: { color: '#ffffff', fontWeight: 600, marginBottom: 8 },
+                }}
+                accept=".pdf,.ppt,.pptx"
+                {...form.getInputProps('presentation_file')}
+                onChange={handlePresentationUpload}
+                disabled={uploadingPresentation}
                 required
               />
 
+              {uploadingPresentation && (
+                <Text size="sm" c="dimmed">Загрузка презентации...</Text>
+              )}
+
               <Textarea
-                label="Краткое резюме"
-                placeholder="Опишите ход соревнования, что было сделано, какие результаты достигнуты..."
-                minRows={5}
+                label="Описание участия"
+                placeholder="Опишите, что вы делали в рамках соревнования, как проходило участие, какие задачи решали..."
+                minRows={6}
                 size="md"
                 classNames={{ input: 'glass-input' }}
                 styles={{
@@ -190,18 +339,6 @@ export default function SubmitCompetitionReport() {
                 }}
                 {...form.getInputProps('brief_summary')}
                 required
-              />
-
-              <NumberInput
-                label="Занятое место (если применимо)"
-                placeholder="1, 2, 3..."
-                min={1}
-                size="md"
-                classNames={{ input: 'glass-input' }}
-                styles={{
-                  label: { color: '#ffffff', fontWeight: 600, marginBottom: 8 },
-                }}
-                {...form.getInputProps('placement')}
               />
 
               <Text fw={700} size="lg" c="white" mt="md">Дополнительная информация (необязательно)</Text>
@@ -257,13 +394,14 @@ export default function SubmitCompetitionReport() {
               <Group justify="flex-end" mt="xl">
                 <VTBButton
                   variant="secondary"
-                  onClick={() => navigate(`/competitions/${competitionId}`)}
+                  onClick={() => navigate('/teams')}
                 >
                   Отмена
                 </VTBButton>
                 <VTBButton
                   type="submit"
                   loading={loading}
+                  disabled={uploadingPresentation}
                   leftSection={<IconFileText size={18} />}
                 >
                   Отправить отчет
@@ -275,8 +413,8 @@ export default function SubmitCompetitionReport() {
 
         <Alert icon={<IconAlertCircle />} color="yellow" variant="light">
           <Text size="sm">
-            <strong>Важно:</strong> После окончания соревнования у вас есть 5 дней на подачу отчета.
-            Если отчет не будет подан вовремя, вся команда не сможет выполнять действия на платформе до его создания.
+            <strong>Важно:</strong> Отчет может быть подан только капитаном команды.
+            Убедитесь, что все данные заполнены корректно перед отправкой.
           </Text>
         </Alert>
       </Stack>

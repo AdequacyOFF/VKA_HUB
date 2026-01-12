@@ -24,6 +24,7 @@ import { CompetitionsList } from '@/pages/Competitions/CompetitionsList';
 import { CompetitionDetail } from '@/pages/Competitions/CompetitionDetail';
 import RegisterTeam from '@/pages/Competitions/RegisterTeam';
 import SubmitCompetitionReport from '@/pages/Competitions/SubmitCompetitionReport';
+import MyTeamReports from '@/pages/Competitions/MyTeamReports';
 import { ModeratorDashboard } from '@/pages/Moderator/ModeratorDashboard';
 import { ModeratorUsers } from '@/pages/Moderator/ModeratorUsers';
 import { ModeratorCompetitions } from '@/pages/Moderator/ModeratorCompetitions';
@@ -73,7 +74,8 @@ const router = createBrowserRouter(
       { path: 'competitions', element: <CompetitionsList /> },
       { path: 'competitions/:id', element: <CompetitionDetail /> },
       { path: 'competitions/:id/register', element: <RegisterTeam /> },
-      { path: 'competitions/:competitionId/registrations/:registrationId/report', element: <SubmitCompetitionReport /> },
+      { path: 'competitions/submit-report', element: <SubmitCompetitionReport /> },
+      { path: 'competitions/my-reports', element: <MyTeamReports /> },
       { path: 'complaints/create', element: <CreateComplaint /> },
       { path: 'platform-complaints/create', element: <CreatePlatformComplaint /> },
     ],
