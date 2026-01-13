@@ -64,9 +64,10 @@ const AVAILABLE_SKILLS = [
 
 interface MultiSelectSkillsProps extends Omit<MultiSelectProps, 'data'> {
   customSkills?: { value: string; label: string; group?: string }[];
+  consolePath?: string;
 }
 
-export function MultiSelectSkills({ customSkills = [], ...props }: MultiSelectSkillsProps) {
+export function MultiSelectSkills({ customSkills = [], consolePath = 'C:\\User\\skills', ...props }: MultiSelectSkillsProps) {
   // Group skills by category for Mantine v7
   const groupedSkills = () => {
     const allSkills = [...AVAILABLE_SKILLS, ...customSkills];
@@ -87,20 +88,59 @@ export function MultiSelectSkills({ customSkills = [], ...props }: MultiSelectSk
   };
 
   return (
-    <MultiSelect
-      data={groupedSkills()}
-      placeholder="Выберите навыки"
-      maxDropdownHeight={400}
-      styles={{
-        groupLabel: {
+    <div style={{ position: 'relative' }}>
+      <span
+        style={{
+          position: 'absolute',
+          top: props.label ? '38px' : '12px',
+          left: '12px',
           color: 'var(--vtb-cyan)',
-          fontWeight: 600,
-          fontSize: '0.75rem',
-          textTransform: 'uppercase',
-          letterSpacing: '0.5px',
-        },
-      }}
-      {...props}
-    />
+          fontFamily: "'Courier New', 'Consolas', monospace",
+          fontSize: '13px',
+          fontWeight: 'bold',
+          whiteSpace: 'nowrap',
+          userSelect: 'none',
+          pointerEvents: 'none',
+          zIndex: 2,
+          maxWidth: 'calc(100% - 60px)',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+        }}
+      >
+        {consolePath} &gt;
+      </span>
+      <MultiSelect
+        data={groupedSkills()}
+        placeholder="Выберите навыки"
+        maxDropdownHeight={400}
+        {...props}
+        classNames={{
+          ...props.classNames,
+          input: `glass-input ${props.classNames?.input || ''}`,
+        }}
+        styles={{
+          groupLabel: {
+            color: 'var(--vtb-cyan)',
+            fontWeight: 600,
+            fontSize: '0.75rem',
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px',
+          },
+          ...props.styles,
+          input: {
+            paddingLeft: '12px',
+            paddingTop: '24px',
+            minHeight: '56px',
+            ...props.styles?.input,
+          },
+          label: {
+            color: '#ffffff',
+            fontWeight: 600,
+            marginBottom: 8,
+            ...props.styles?.label,
+          },
+        }}
+      />
+    </div>
   );
 }

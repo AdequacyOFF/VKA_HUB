@@ -17,17 +17,59 @@ const AVAILABLE_ROLES = [
 
 interface MultiSelectRolesProps extends Omit<MultiSelectProps, 'data'> {
   customRoles?: { value: string; label: string }[];
+  consolePath?: string;
 }
 
-export function MultiSelectRoles({ customRoles = [], ...props }: MultiSelectRolesProps) {
+export function MultiSelectRoles({ customRoles = [], consolePath = 'C:\\User\\roles', ...props }: MultiSelectRolesProps) {
   const allRoles = [...AVAILABLE_ROLES, ...customRoles];
 
   return (
-    <MultiSelect
-      data={allRoles}
-      placeholder="Выберите роли"
-      maxDropdownHeight={300}
-      {...props}
-    />
+    <div style={{ position: 'relative' }}>
+      <span
+        style={{
+          position: 'absolute',
+          top: props.label ? '38px' : '12px',
+          left: '12px',
+          color: 'var(--vtb-cyan)',
+          fontFamily: "'Courier New', 'Consolas', monospace",
+          fontSize: '13px',
+          fontWeight: 'bold',
+          whiteSpace: 'nowrap',
+          userSelect: 'none',
+          pointerEvents: 'none',
+          zIndex: 2,
+          maxWidth: 'calc(100% - 60px)',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+        }}
+      >
+        {consolePath} &gt;
+      </span>
+      <MultiSelect
+        data={allRoles}
+        placeholder="Выберите роли"
+        maxDropdownHeight={300}
+        {...props}
+        classNames={{
+          ...props.classNames,
+          input: `glass-input ${props.classNames?.input || ''}`,
+        }}
+        styles={{
+          ...props.styles,
+          input: {
+            paddingLeft: '12px',
+            paddingTop: '24px',
+            minHeight: '56px',
+            ...props.styles?.input,
+          },
+          label: {
+            color: '#ffffff',
+            fontWeight: 600,
+            marginBottom: 8,
+            ...props.styles?.label,
+          },
+        }}
+      />
+    </div>
   );
 }

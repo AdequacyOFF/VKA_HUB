@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Title, TextInput, PasswordInput, Stack, Text, Container, Box, Anchor, List, Alert } from '@mantine/core';
+import { Title, Stack, Text, Container, Box, Anchor, List, Alert } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
-import { IconUserPlus, IconUser, IconLock, IconAlertCircle } from '@tabler/icons-react';
+import { IconUserPlus, IconAlertCircle } from '@tabler/icons-react';
 import { VTBCard } from '../../components/common/VTBCard';
 import { VTBButton } from '../../components/common/VTBButton';
+import { ConsoleInput } from '../../components/common/ConsoleInput';
+import { ConsolePasswordInput } from '../../components/common/ConsolePasswordInput';
 import { authApi } from '../../api';
 import { useAuthStore } from '../../store/authStore';
 
@@ -111,39 +113,27 @@ export function Register() {
                   </List>
                 </Alert>
 
-                <TextInput
+                <ConsoleInput
                   label="Логин"
                   placeholder="Введите логин"
-                  leftSection={<IconUser size={18} />}
+                  consolePath="C:\User\register\login"
                   size="md"
-                  classNames={{ input: 'glass-input' }}
-                  styles={{
-                    label: { color: '#ffffff', fontWeight: 600, marginBottom: 8 },
-                  }}
                   {...form.getInputProps('login')}
                 />
 
-                <PasswordInput
+                <ConsolePasswordInput
                   label="Пароль"
                   placeholder="Введите пароль"
-                  leftSection={<IconLock size={18} />}
+                  consolePath="C:\User\register\pass"
                   size="md"
-                  classNames={{ input: 'glass-input' }}
-                  styles={{
-                    label: { color: '#ffffff', fontWeight: 600, marginBottom: 8 },
-                  }}
                   {...form.getInputProps('password')}
                 />
 
-                <PasswordInput
+                <ConsolePasswordInput
                   label="Подтверждение пароля"
                   placeholder="Повторите пароль"
-                  leftSection={<IconLock size={18} />}
+                  consolePath="C:\User\register\confirm"
                   size="md"
-                  classNames={{ input: 'glass-input' }}
-                  styles={{
-                    label: { color: '#ffffff', fontWeight: 600, marginBottom: 8 },
-                  }}
                   {...form.getInputProps('passwordConfirm')}
                 />
 

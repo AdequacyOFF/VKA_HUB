@@ -72,7 +72,7 @@ export function ModeratorDashboard() {
           <Title order={1} className="vtb-heading-hero" mb="xs">
             <span className="vtb-gradient-text">Панель управления</span>
           </Title>
-          <Text c="dimmed" size="lg">
+          <Text c="white" size="lg">
             Обзор статистики платформы
           </Text>
         </div>
@@ -84,13 +84,13 @@ export function ModeratorDashboard() {
                 <Group justify="space-between">
                   <IconUsers size={32} color="var(--vtb-cyan)" />
                   <div style={{ textAlign: 'right' }}>
-                    <Text size="xs" c="dimmed">Всего пользователей</Text>
+                    <Text size="md" c="white">Всего пользователей</Text>
                     <Text size="xl" fw={700} c="white">{stats.totalUsers}</Text>
                   </div>
                 </Group>
                 <Group gap="xs">
                   <IconTrendingUp size={16} color="#22c55e" />
-                  <Text size="sm" c="#22c55e">+{stats.newUsersThisMonth} за месяц</Text>
+                  <Text size="md" c="#22c55e">+{stats.newUsersThisMonth} за месяц</Text>
                 </Group>
               </Stack>
             </VTBCard>
@@ -102,13 +102,13 @@ export function ModeratorDashboard() {
                 <Group justify="space-between">
                   <IconUsersGroup size={32} color="var(--vtb-cyan)" />
                   <div style={{ textAlign: 'right' }}>
-                    <Text size="xs" c="dimmed">Всего команд</Text>
+                    <Text size="md" c="white">Всего команд</Text>
                     <Text size="xl" fw={700} c="white">{stats.totalTeams}</Text>
                   </div>
                 </Group>
                 <Group gap="xs">
                   <IconTrendingUp size={16} color="#22c55e" />
-                  <Text size="sm" c="#22c55e">+{stats.newTeamsThisMonth} за месяц</Text>
+                  <Text size="md" c="#22c55e">+{stats.newTeamsThisMonth} за месяц</Text>
                 </Group>
               </Stack>
             </VTBCard>
@@ -120,13 +120,13 @@ export function ModeratorDashboard() {
                 <Group justify="space-between">
                   <IconTrophy size={32} color="var(--vtb-cyan)" />
                   <div style={{ textAlign: 'right' }}>
-                    <Text size="xs" c="dimmed">Соревнования</Text>
+                    <Text size="md" c="white">Соревнования</Text>
                     <Text size="xl" fw={700} c="white">{stats.totalCompetitions}</Text>
                   </div>
                 </Group>
                 <Group gap="xs">
                   <IconActivity size={16} color="var(--vtb-cyan)" />
-                  <Text size="sm" c="var(--vtb-cyan)">{stats.activeCompetitions} активных</Text>
+                  <Text size="md" c="var(--vtb-cyan)">{stats.activeCompetitions} активных</Text>
                 </Group>
               </Stack>
             </VTBCard>
@@ -138,13 +138,13 @@ export function ModeratorDashboard() {
                 <Group justify="space-between">
                   <IconFlag size={32} color="#fbbf24" />
                   <div style={{ textAlign: 'right' }}>
-                    <Text size="xs" c="dimmed">Жалобы</Text>
+                    <Text size="md" c="white">Жалобы</Text>
                     <Text size="xl" fw={700} c="white">{stats.pendingReports + stats.resolvedReports}</Text>
                   </div>
                 </Group>
                 <Group gap="xs">
                   <IconClock size={16} color="#fbbf24" />
-                  <Text size="sm" c="#fbbf24">{stats.pendingReports} ожидают</Text>
+                  <Text size="md" c="#fbbf24">{stats.pendingReports} ожидают</Text>
                 </Group>
               </Stack>
             </VTBCard>
@@ -176,8 +176,8 @@ export function ModeratorDashboard() {
                         }
                       />
                       <div style={{ textAlign: 'center' }}>
-                        <Text size="sm" c="dimmed">Рост пользователей</Text>
-                        <Text size="xs" c="dimmed">за последний месяц</Text>
+                        <Text size="md" c="white">Рост пользователей</Text>
+                        <Text size="md" c="white">за последний месяц</Text>
                       </div>
                     </Stack>
                   </Grid.Col>
@@ -200,8 +200,8 @@ export function ModeratorDashboard() {
                         }
                       />
                       <div style={{ textAlign: 'center' }}>
-                        <Text size="sm" c="dimmed">Рост команд</Text>
-                        <Text size="xs" c="dimmed">за последний месяц</Text>
+                        <Text size="md" c="white">Рост команд</Text>
+                        <Text size="md" c="white">за последний месяц</Text>
                       </div>
                     </Stack>
                   </Grid.Col>
@@ -223,7 +223,7 @@ export function ModeratorDashboard() {
                       padding: 16,
                       background: 'rgba(251, 191, 36, 0.1)',
                       border: '1px solid #fbbf24',
-                      borderRadius: 12,
+                      borderRadius: 0,
                     }}
                   >
                     <Group justify="space-between">
@@ -231,7 +231,7 @@ export function ModeratorDashboard() {
                         <IconClock size={24} color="#fbbf24" />
                         <div>
                           <Text fw={600} c="white">Ожидают рассмотрения</Text>
-                          <Text size="sm" c="dimmed">Требуют внимания</Text>
+                          <Text size="md" c="white">Требуют внимания</Text>
                         </div>
                       </Group>
                       <Text size="xl" fw={700} c="#fbbf24">{stats.pendingReports}</Text>
@@ -243,7 +243,7 @@ export function ModeratorDashboard() {
                       padding: 16,
                       background: 'rgba(34, 197, 94, 0.1)',
                       border: '1px solid #22c55e',
-                      borderRadius: 12,
+                      borderRadius: 0,
                     }}
                   >
                     <Group justify="space-between">
@@ -251,7 +251,7 @@ export function ModeratorDashboard() {
                         <IconCheck size={24} color="#22c55e" />
                         <div>
                           <Text fw={600} c="white">Рассмотрены</Text>
-                          <Text size="sm" c="dimmed">Всего за всё время</Text>
+                          <Text size="md" c="white">Всего за всё время</Text>
                         </div>
                       </Group>
                       <Text size="xl" fw={700} c="#22c55e">{stats.resolvedReports}</Text>
@@ -263,7 +263,7 @@ export function ModeratorDashboard() {
                       padding: 16,
                       background: 'rgba(239, 68, 68, 0.1)',
                       border: '1px solid #ef4444',
-                      borderRadius: 12,
+                      borderRadius: 0,
                     }}
                   >
                     <Group justify="space-between">
@@ -271,7 +271,7 @@ export function ModeratorDashboard() {
                         <IconX size={24} color="#ef4444" />
                         <div>
                           <Text fw={600} c="white">Отклонены</Text>
-                          <Text size="sm" c="dimmed">Всего за всё время</Text>
+                          <Text size="md" c="white">Всего за всё время</Text>
                         </div>
                       </Group>
                       <Text size="xl" fw={700} c="#ef4444">{stats.rejectedReports}</Text>
@@ -293,7 +293,7 @@ export function ModeratorDashboard() {
                       padding: 16,
                       background: 'rgba(59, 130, 246, 0.1)',
                       border: '1px solid #3b82f6',
-                      borderRadius: 12,
+                      borderRadius: 0,
                     }}
                   >
                     <Group justify="space-between">
@@ -301,7 +301,7 @@ export function ModeratorDashboard() {
                         <IconClock size={24} color="#3b82f6" />
                         <div>
                           <Text fw={600} c="white">Ожидают ответа</Text>
-                          <Text size="sm" c="dimmed">Требуют внимания</Text>
+                          <Text size="md" c="white">Требуют внимания</Text>
                         </div>
                       </Group>
                       <Text size="xl" fw={700} c="#3b82f6">{stats.pendingFeedback}</Text>
@@ -313,7 +313,7 @@ export function ModeratorDashboard() {
                       padding: 16,
                       background: 'rgba(34, 197, 94, 0.1)',
                       border: '1px solid #22c55e',
-                      borderRadius: 12,
+                      borderRadius: 0,
                     }}
                   >
                     <Group justify="space-between">
@@ -321,7 +321,7 @@ export function ModeratorDashboard() {
                         <IconCheck size={24} color="#22c55e" />
                         <div>
                           <Text fw={600} c="white">Обработаны</Text>
-                          <Text size="sm" c="dimmed">Всего за всё время</Text>
+                          <Text size="md" c="white">Всего за всё время</Text>
                         </div>
                       </Group>
                       <Text size="xl" fw={700} c="#22c55e">{stats.resolvedFeedback}</Text>
@@ -333,7 +333,7 @@ export function ModeratorDashboard() {
                       padding: 16,
                       background: 'rgba(239, 68, 68, 0.1)',
                       border: '1px solid #ef4444',
-                      borderRadius: 12,
+                      borderRadius: 0,
                     }}
                   >
                     <Group justify="space-between">
@@ -341,7 +341,7 @@ export function ModeratorDashboard() {
                         <IconX size={24} color="#ef4444" />
                         <div>
                           <Text fw={600} c="white">Отклонены</Text>
-                          <Text size="sm" c="dimmed">Всего за всё время</Text>
+                          <Text size="md" c="white">Всего за всё время</Text>
                         </div>
                       </Group>
                       <Text size="xl" fw={700} c="#ef4444">{stats.rejectedFeedback}</Text>

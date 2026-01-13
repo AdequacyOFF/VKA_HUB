@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Container, Title, Grid, TextInput, Group, Stack, Select } from '@mantine/core';
+import { Container, Title, Grid, Group, Stack, Select } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
-import { IconSearch, IconFilter } from '@tabler/icons-react';
+import { IconFilter } from '@tabler/icons-react';
 import { UserCard } from '../../components/common/UserCard';
+import { ConsoleInput } from '../../components/common/ConsoleInput';
 import { MultiSelectRoles } from '../../components/common/MultiSelectRoles';
 import { MultiSelectSkills } from '../../components/common/MultiSelectSkills';
 import { VTBCard } from '../../components/common/VTBCard';
@@ -66,36 +67,32 @@ export function UsersList() {
 
             <Grid gutter="md">
               <Grid.Col span={{ base: 12, md: 6 }}>
-                <TextInput
+                <ConsoleInput
                   placeholder="Поиск по имени или логину..."
-                  leftSection={<IconSearch size={18} />}
+                  consolePath="C:\User\search"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   size="md"
-                  classNames={{ input: 'glass-input' }}
-                  styles={{
-                    label: { color: '#ffffff', fontWeight: 600 },
-                  }}
                 />
               </Grid.Col>
 
               <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
-                <TextInput
+                <ConsoleInput
                   placeholder="Учебная группа"
+                  consolePath="C:\User\group"
                   value={groupFilter}
                   onChange={(e) => setGroupFilter(e.target.value)}
                   size="md"
-                  classNames={{ input: 'glass-input' }}
                 />
               </Grid.Col>
 
               <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
-                <TextInput
+                <ConsoleInput
                   placeholder="Звание"
+                  consolePath="C:\User\rank"
                   value={rankFilter}
                   onChange={(e) => setRankFilter(e.target.value)}
                   size="md"
-                  classNames={{ input: 'glass-input' }}
                 />
               </Grid.Col>
 

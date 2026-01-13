@@ -31,7 +31,7 @@ export const theme = createTheme({
   /** VTB-inspired theme configuration */
   primaryColor: 'cyan',
   fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-  defaultRadius: 'md',
+  defaultRadius: 0,
   white: '#ffffff',
   black: '#0A1F44',
   colors: {

@@ -14,7 +14,7 @@ export const DateInputTheme = DateInput.extend({
       backdropFilter: 'blur(20px)',
       WebkitBackdropFilter: 'blur(20px)',
       border: '1px solid rgba(0, 217, 255, 0.3)',
-      borderRadius: '12px',
+      borderRadius: '0px',
       boxShadow: '0 12px 48px rgba(0, 0, 0, 0.4)',
     },
     calendarHeader: {
@@ -88,7 +88,7 @@ export const DateTimePickerTheme = DateTimePicker.extend({
       backdropFilter: 'blur(20px)',
       WebkitBackdropFilter: 'blur(20px)',
       border: '1px solid rgba(0, 217, 255, 0.3)',
-      borderRadius: '12px',
+      borderRadius: '0px',
       boxShadow: '0 12px 48px rgba(0, 0, 0, 0.4)',
     },
     calendarHeader: {
@@ -148,7 +148,7 @@ export const DatePickerInputTheme = DatePickerInput.extend({
       backdropFilter: 'blur(20px)',
       WebkitBackdropFilter: 'blur(20px)',
       border: '1px solid rgba(0, 217, 255, 0.3)',
-      borderRadius: '12px',
+      borderRadius: '0px',
       boxShadow: '0 12px 48px rgba(0, 0, 0, 0.4)',
     },
     calendarHeader: {

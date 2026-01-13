@@ -15,7 +15,7 @@ export const ModalTheme = Modal.extend({
       backdropFilter: 'blur(30px)',
       WebkitBackdropFilter: 'blur(30px)',
       border: '1px solid rgba(0, 217, 255, 0.3)',
-      borderRadius: '24px',
+      borderRadius: '0px',
       boxShadow: '0 12px 48px rgba(0, 0, 0, 0.4)',
     },
     header: {
@@ -56,7 +56,7 @@ export const PopoverTheme = Popover.extend({
       backdropFilter: 'blur(20px)',
       WebkitBackdropFilter: 'blur(20px)',
       border: '1px solid rgba(0, 217, 255, 0.3)',
-      borderRadius: '12px',
+      borderRadius: '0px',
       boxShadow: '0 12px 48px rgba(0, 0, 0, 0.4)',
       color: '#ffffff',
     },
@@ -73,13 +73,13 @@ export const MenuTheme = Menu.extend({
       backdropFilter: 'blur(20px)',
       WebkitBackdropFilter: 'blur(20px)',
       border: '1px solid rgba(0, 217, 255, 0.3)',
-      borderRadius: '12px',
+      borderRadius: '0px',
       boxShadow: '0 12px 48px rgba(0, 0, 0, 0.4)',
       padding: '8px',
     },
     item: {
       color: '#ffffff',
-      borderRadius: '8px',
+      borderRadius: '0px',
       padding: '12px 16px',
       '&:hover': {
         background: 'rgba(0, 217, 255, 0.1)',
