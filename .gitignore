@@ -1,3 +1,4 @@
+
 # Python
 __pycache__/
 *.py[cod]
@@ -83,4 +84,12 @@ Thumbs.db
 # Alembic
 alembic/versions/*.pyc
 
-.claude
+# Claude Code temporary files
+.claude/
+tmpclaude-*
+1.png
+2.png
+3.png
+4.png
+5.png
+6.png

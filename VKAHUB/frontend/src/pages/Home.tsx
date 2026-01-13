@@ -14,6 +14,14 @@ import { VTBButton } from '../components/common/VTBButton';
 import { useAuthStore } from '../store/authStore';
 import { publicApi } from '../api';
 
+// Import neon icons
+import neonComputer from '../assets/images/neon_computer.png';
+import neonCloud from '../assets/images/neon_cloud.png';
+import neonBriefcase from '../assets/images/neon_briefcase.png';
+import neonMail from '../assets/images/neon_mail.png';
+import neonUsb from '../assets/images/neon_usb.png';
+import processor from '../assets/images/processor.png';
+
 export function Home() {
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuthStore();
@@ -26,17 +34,22 @@ export function Home() {
 
   return (
     <>
+      {/* Scan Line Animation */}
+      <div className="scan-line" />
+
+      {/* Floating Neon Icons */}
+      <img src={neonComputer} alt="" className="floating-icon floating-icon-1" style={{ width: '200px', height: 'auto' }} />
+      <img src={neonCloud} alt="" className="floating-icon floating-icon-2" style={{ width: '150px', height: 'auto' }} />
+      <img src={processor} alt="" className="floating-icon floating-icon-3" style={{ width: '100px', height: 'auto' }} />
+
       {/* Hero Section */}
-      <Box className="vtb-section" style={{ paddingTop: 60, paddingBottom: 60 }}>
+      <Box className="vtb-section console-lines-vertical" style={{ paddingTop: 60, paddingBottom: 60, position: 'relative' }}>
         <Container size="xl" className="vtb-container">
           <Stack align="center" gap="xl">
-            <div className="vtb-heading-hero" style={{ textAlign: 'center' }}>
+            <div className="vtb-heading-hero neon-glow" style={{ textAlign: 'center' }}>
               <div>
                 <span style={{ color: '#ffffff' }}>VKA</span>
                 <span className="vtb-gradient-text">HUB</span>
-              </div>
-              <div className="vtb-text-outline" style={{ fontSize: '0.6em', marginTop: -20 }}>
-                hackathon
               </div>
             </div>
 
@@ -89,16 +102,20 @@ export function Home() {
       {/* Scrolling Banner */}
       <div className="vtb-scroll-banner">
         <div className="vtb-scroll-text">
-          СОЗДАВАЙ КОМАНДЫ → УЧАСТВУЙ В ХАКАТОНАХ → СОРЕВНУЙСЯ В CTF → ПОЛУЧАЙ СЕРТИФИКАТЫ → VKA HUB → СОЗДАВАЙ КОМАНДЫ → УЧАСТВУЙ В ХАКАТОНАХ → СОРЕВНУЙСЯ В CTF → ПОЛУЧАЙ СЕРТИФИКАТЫ → VKA HUB →
+          СОЗДАВАЙ КОМАНДЫ → СОРЕВНУЙСЯ В CTF → ПОЛУЧАЙ СЕРТИФИКАТЫ → РАЗВИВАЙ НАВЫКИ → VKA HUB → СОЗДАВАЙ КОМАНДЫ → СОРЕВНУЙСЯ В CTF → ПОЛУЧАЙ СЕРТИФИКАТЫ → РАЗВИВАЙ НАВЫКИ → VKA HUB →
         </div>
       </div>
 
       {/* Features Section */}
-      <Box className="vtb-section">
+      <Box className="vtb-section console-grid" style={{ position: 'relative' }}>
+        {/* Additional floating icons for this section */}
+        <img src={neonBriefcase} alt="" className="floating-icon" style={{ width: '120px', height: 'auto', top: '20%', left: '8%', opacity: 0.1 }} />
+        <img src={neonMail} alt="" className="floating-icon" style={{ width: '100px', height: 'auto', bottom: '20%', right: '12%', opacity: 0.1 }} />
+
         <Container size="xl" className="vtb-container">
           <Stack gap="xl">
             <div>
-              <Title order={2} className="vtb-heading-section" ta="center" mb="md">
+              <Title order={2} className="vtb-heading-section neon-glow" ta="center" mb="md">
                 Возможности платформы
               </Title>
               <Text size="lg" c="dimmed" ta="center" maw={800} mx="auto">
@@ -161,7 +178,7 @@ export function Home() {
                       Соревнования
                     </Text>
                     <Text size="sm" c="dimmed" ta="center">
-                      Участвуйте в хакатонах, CTF и других мероприятиях
+                      Участвуйте в CTF и других соревнованиях
                     </Text>
                     <VTBButton
                       variant="glass"
@@ -214,7 +231,10 @@ export function Home() {
       </Box>
 
       {/* Stats Section */}
-      <Box style={{ background: 'rgba(10, 31, 68, 0.5)', padding: '60px 0' }}>
+      <Box className="console-lines-vertical" style={{ background: 'rgba(10, 31, 68, 0.5)', padding: '60px 0', position: 'relative' }}>
+        {/* More floating icons */}
+        <img src={neonUsb} alt="" className="floating-icon" style={{ width: '90px', height: 'auto', top: '30%', left: '5%', opacity: 0.12 }} />
+
         <Container size="xl" className="vtb-container">
           <Grid gutter="xl">
             <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
