@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Container, Title, Stack, TextInput, Table, Badge, Group, ActionIcon, Text, Modal, LoadingOverlay, Select } from '@mantine/core';
+import { Container, Title, Stack, Table, Badge, Group, ActionIcon, Text, Modal, LoadingOverlay, Select } from '@mantine/core';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { IconSearch, IconUserMinus, IconUserPlus, IconShieldCheck } from '@tabler/icons-react';
+import { IconUserMinus, IconUserPlus, IconShieldCheck } from '@tabler/icons-react';
 import { VTBCard } from '../../components/common/VTBCard';
 import { VTBButton } from '../../components/common/VTBButton';
+import { ConsoleInput } from '../../components/common/ConsoleInput';
 import { notifications } from '@mantine/notifications';
 import { moderatorApi, api } from '../../api';
 import { getErrorMessage } from '../../utils/errorHandler';
@@ -77,7 +78,7 @@ export function ModeratorModerators() {
             <Title order={1} className="vtb-heading-hero" mb="xs">
               <span className="vtb-gradient-text">Управление модераторами</span>
             </Title>
-            <Text c="dimmed" size="lg">Назначение и управление модераторами</Text>
+            <Text c="white" size="lg">Назначение и управление модераторами</Text>
           </div>
           <VTBButton leftSection={<IconUserPlus size={18} />} onClick={() => setAddModalOpened(true)}>
             Добавить модератора
@@ -85,13 +86,12 @@ export function ModeratorModerators() {
         </Group>
 
         <VTBCard variant="secondary">
-          <TextInput
+          <ConsoleInput
             placeholder="Поиск модераторов..."
-            leftSection={<IconSearch size={18} />}
+            consolePath="C:\Moderator\Moderators\search"
             value={search}
             onChange={(e) => setSearch(e.currentTarget.value)}
             size="md"
-            classNames={{ input: 'glass-input' }}
           />
         </VTBCard>
 
@@ -100,9 +100,9 @@ export function ModeratorModerators() {
           {error ? (
             <Text c="red" ta="center">Ошибка загрузки: {getErrorMessage(error)}</Text>
           ) : !moderators || moderators.length === 0 ? (
-            <Text c="dimmed" ta="center">Нет модераторов</Text>
+            <Text c="white" ta="center">Нет модераторов</Text>
           ) : filteredModerators.length === 0 ? (
-            <Text c="dimmed" ta="center">Нет результатов по запросу "{search}"</Text>
+            <Text c="white" ta="center">Нет результатов по запросу "{search}"</Text>
           ) : (
             <Table highlightOnHover styles={{
               th: { color: 'var(--vtb-cyan)', borderBottom: '1px solid rgba(0, 217, 255, 0.2)' },

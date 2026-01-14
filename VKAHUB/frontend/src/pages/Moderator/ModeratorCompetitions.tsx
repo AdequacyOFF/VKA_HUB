@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Container, Title, Stack, TextInput, Table, Badge, Group, ActionIcon, Text, Modal, Tooltip } from '@mantine/core';
+import { Container, Title, Stack, Table, Badge, Group, ActionIcon, Text, Modal, Tooltip } from '@mantine/core';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { IconSearch, IconTrash, IconPlus, IconFileText } from '@tabler/icons-react';
+import { IconTrash, IconPlus, IconFileText } from '@tabler/icons-react';
 import { VTBCard } from '../../components/common/VTBCard';
 import { VTBButton } from '../../components/common/VTBButton';
+import { ConsoleInput } from '../../components/common/ConsoleInput';
 import { notifications } from '@mantine/notifications';
 import { competitionsApi, api } from '../../api';
 import { Competition } from '../../types';
@@ -88,7 +89,7 @@ export function ModeratorCompetitions() {
             <Title order={1} className="vtb-heading-hero" mb="xs">
               <span className="vtb-gradient-text">Управление соревнованиями</span>
             </Title>
-            <Text c="dimmed" size="lg">Создание и модерация соревнований</Text>
+            <Text c="white" size="lg">Создание и модерация соревнований</Text>
           </div>
           <VTBButton leftSection={<IconPlus size={18} />} onClick={() => navigate('/moderator/competitions/create')}>
             Создать соревнование
@@ -96,13 +97,12 @@ export function ModeratorCompetitions() {
         </Group>
 
         <VTBCard variant="secondary">
-          <TextInput
+          <ConsoleInput
             placeholder="Поиск соревнований..."
-            leftSection={<IconSearch size={18} />}
+            consolePath="C:\Moderator\Competitions\search"
             value={search}
             onChange={(e) => setSearch(e.currentTarget.value)}
             size="md"
-            classNames={{ input: 'glass-input' }}
           />
         </VTBCard>
 
@@ -112,7 +112,7 @@ export function ModeratorCompetitions() {
           ) : error ? (
             <Text c="red" ta="center">Ошибка загрузки соревнований</Text>
           ) : filteredComps.length === 0 ? (
-            <Text c="dimmed" ta="center">Соревнования не найдены</Text>
+            <Text c="white" ta="center">Соревнования не найдены</Text>
           ) : (
             <Table highlightOnHover styles={{
               th: { color: 'var(--vtb-cyan)', borderBottom: '1px solid rgba(0, 217, 255, 0.2)' },

@@ -1,15 +1,16 @@
 import { useState, useEffect } from 'react';  // ✅ Добавляем useEffect
-import { 
-  Container, Title, Stack, TextInput, Table, Badge, Group, ActionIcon, 
-  Text, Modal, PasswordInput, Button, LoadingOverlay, Alert
+import {
+  Container, Title, Stack, Table, Badge, Group, ActionIcon,
+  Text, Modal, PasswordInput, Button, LoadingOverlay, Alert, TextInput
 } from '@mantine/core';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  IconSearch, IconEdit, IconBan, IconCheck, IconX,
+  IconEdit, IconBan, IconCheck, IconX,
   IconDeviceFloppy, IconLock, IconShield, IconLockOpen
 } from '@tabler/icons-react';
 import { VTBCard } from '../../components/common/VTBCard';
 import { VTBButton } from '../../components/common/VTBButton';
+import { ConsoleInput } from '../../components/common/ConsoleInput';
 import { notifications } from '@mantine/notifications';
 import { usersApi, api, moderatorApi } from '../../api';  // ✅ Импортируем moderatorApi
 import { User } from '../../types';
@@ -308,17 +309,16 @@ export function ModeratorUsers() {
           <Title order={1} className="vtb-heading-hero" mb="xs">
             <span className="vtb-gradient-text">Управление пользователями</span>
           </Title>
-          <Text c="dimmed" size="lg">Просмотр и модерация пользователей платформы</Text>
+          <Text c="white" size="lg">Просмотр и модерация пользователей платформы</Text>
         </div>
 
         <VTBCard variant="secondary">
-          <TextInput
+          <ConsoleInput
             placeholder="Поиск по логину или имени..."
-            leftSection={<IconSearch size={18} />}
+            consolePath="C:\Moderator\Users\search"
             value={search}
             onChange={(e) => setSearch(e.currentTarget.value)}
             size="md"
-            classNames={{ input: 'glass-input' }}
           />
         </VTBCard>
 
@@ -328,7 +328,7 @@ export function ModeratorUsers() {
           ) : error ? (
             <Text c="red" ta="center">Ошибка загрузки пользователей</Text>
           ) : filteredUsers.length === 0 ? (
-            <Text c="dimmed" ta="center">Пользователи не найдены</Text>
+            <Text c="white" ta="center">Пользователи не найдены</Text>
           ) : (
             <Table highlightOnHover styles={{
               th: { color: 'var(--vtb-cyan)', borderBottom: '1px solid rgba(0, 217, 255, 0.2)' },

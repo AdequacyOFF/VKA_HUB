@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Stack, TextInput, Group, Title, Text, Select } from '@mantine/core';
+import { Stack, Group, Title, Text } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { useQuery } from '@tanstack/react-query';
 import { VTBCard } from '../../../components/common/VTBCard';
 import { VTBButton } from '../../../components/common/VTBButton';
+import { ConsoleInput } from '../../../components/common/ConsoleInput';
+import { ConsoleSelect } from '../../../components/common/ConsoleSelect';
 import { AvatarUploader } from '../../../components/common/AvatarUploader';
 import { ConfirmModal } from '../../../components/common/ConfirmModal';
 import { useAuthStore } from '../../../store/authStore';
@@ -175,18 +177,17 @@ export function GeneralInformation() {
           <form onSubmit={form.onSubmit(handleSubmit)} style={{ flex: 1 }}>
             <Stack gap="md">
               <Group grow>
-                <TextInput label="Фамилия" placeholder="Иванов" classNames={{ input: 'glass-input' }} styles={{ label: { color: '#ffffff', fontWeight: 600 } }} {...form.getInputProps('lastName')} />
-                <TextInput label="Имя" placeholder="Иван" classNames={{ input: 'glass-input' }} styles={{ label: { color: '#ffffff', fontWeight: 600 } }} {...form.getInputProps('firstName')} />
+                <ConsoleInput label="Фамилия" placeholder="Иванов" consolePath="C:\Profile\lastname" {...form.getInputProps('lastName')} />
+                <ConsoleInput label="Имя" placeholder="Иван" consolePath="C:\Profile\firstname" {...form.getInputProps('firstName')} />
               </Group>
 
-              <TextInput label="Отчество" placeholder="Иванович" classNames={{ input: 'glass-input' }} styles={{ label: { color: '#ffffff', fontWeight: 600 } }} {...form.getInputProps('middleName')} />
+              <ConsoleInput label="Отчество" placeholder="Иванович" consolePath="C:\Profile\middlename" {...form.getInputProps('middleName')} />
 
               <Group grow>
-                <TextInput
+                <ConsoleInput
                   label="Учебная группа"
                   placeholder="621/11"
-                  classNames={{ input: 'glass-input' }}
-                  styles={{ label: { color: '#ffffff', fontWeight: 600 } }}
+                  consolePath="C:\Profile\group"
                   {...form.getInputProps('studyGroup', { withError: true })}
                   onChange={(event) => {
                     const value = event.currentTarget.value;
@@ -195,22 +196,20 @@ export function GeneralInformation() {
                   }}
                 />
 
-                <Select
+                <ConsoleSelect
                   label="Звание"
                   placeholder="Выберите звание"
-                  classNames={{ input: 'glass-input' }}
-                  styles={{ label: { color: '#ffffff', fontWeight: 600 } }}
+                  consolePath="C:\Profile\rank"
                   data={militaryRanks}
                   {...form.getInputProps('rank')}
                   clearable={false}
                 />
               </Group>
 
-              <Select
+              <ConsoleSelect
                 label="Должность"
                 placeholder="Выберите должность"
-                classNames={{ input: 'glass-input' }}
-                styles={{ label: { color: '#ffffff', fontWeight: 600 } }}
+                consolePath="C:\Profile\position"
                 data={positions}
                 {...form.getInputProps('position')}
                 clearable={false}
@@ -229,7 +228,7 @@ export function GeneralInformation() {
         <Text size="sm" c="dimmed" mb="lg">Используется для восстановления пароля</Text>
 
         <Stack gap="md">
-          <TextInput label="Контрольный вопрос" placeholder="Кличка первого питомца?" classNames={{ input: 'glass-input' }} styles={{ label: { color: '#ffffff', fontWeight: 600 } }} {...form.getInputProps('controlQuestion')} />
+          <ConsoleInput label="Контрольный вопрос" placeholder="Кличка первого питомца?" consolePath="C:\Profile\question" {...form.getInputProps('controlQuestion')} />
 
           <Group justify="flex-end">
             <VTBButton variant="secondary" onClick={() => setConfirmModalOpened(true)}>Изменить контрольный вопрос</VTBButton>
@@ -246,7 +245,7 @@ export function GeneralInformation() {
         confirmText="Подтвердить"
         loading={loading}
       >
-        <TextInput label="Ответ на контрольный вопрос" placeholder="Введите ответ" type="password" classNames={{ input: 'glass-input' }} styles={{ label: { color: '#ffffff', fontWeight: 600 } }} {...form.getInputProps('controlAnswer')} mt="md" />
+        <ConsoleInput label="Ответ на контрольный вопрос" placeholder="Введите ответ" type="password" consolePath="C:\Profile\answer" {...form.getInputProps('controlAnswer')} mt="md" />
       </ConfirmModal>
     </Stack>
   );

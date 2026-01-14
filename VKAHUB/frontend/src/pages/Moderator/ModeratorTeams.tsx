@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Container, Title, Stack, TextInput, Table, Badge, Group, ActionIcon, Text } from '@mantine/core';
+import { Container, Title, Stack, Table, Badge, Group, ActionIcon, Text } from '@mantine/core';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { IconSearch, IconTrash, IconUsers } from '@tabler/icons-react';
+import { IconTrash, IconUsers } from '@tabler/icons-react';
 import { VTBCard } from '../../components/common/VTBCard';
+import { ConsoleInput } from '../../components/common/ConsoleInput';
 import { notifications } from '@mantine/notifications';
 import { teamsApi, api } from '../../api';
 import { Team } from '../../types';
@@ -67,17 +68,16 @@ export function ModeratorTeams() {
           <Title order={1} className="vtb-heading-hero" mb="xs">
             <span className="vtb-gradient-text">Управление командами</span>
           </Title>
-          <Text c="dimmed" size="lg">Просмотр и модерация команд</Text>
+          <Text c="white" size="lg">Просмотр и модерация команд</Text>
         </div>
 
         <VTBCard variant="secondary">
-          <TextInput
+          <ConsoleInput
             placeholder="Поиск команд..."
-            leftSection={<IconSearch size={18} />}
+            consolePath="C:\Moderator\Teams\search"
             value={search}
             onChange={(e) => setSearch(e.currentTarget.value)}
             size="md"
-            classNames={{ input: 'glass-input' }}
           />
         </VTBCard>
 
@@ -87,7 +87,7 @@ export function ModeratorTeams() {
           ) : error ? (
             <Text c="red" ta="center">Ошибка загрузки команд</Text>
           ) : filteredTeams.length === 0 ? (
-            <Text c="dimmed" ta="center">Команды не найдены</Text>
+            <Text c="white" ta="center">Команды не найдены</Text>
           ) : (
             <Table highlightOnHover styles={{
               th: { color: 'var(--vtb-cyan)', borderBottom: '1px solid rgba(0, 217, 255, 0.2)' },

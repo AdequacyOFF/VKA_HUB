@@ -6,29 +6,34 @@ interface ConsoleMultiSelectProps extends Omit<MultiSelectProps, 'leftSection'> 
 }
 
 export const ConsoleMultiSelect = forwardRef<HTMLInputElement, ConsoleMultiSelectProps>(
-  function ConsoleMultiSelect({ consolePath = 'C:\\User\\multiselect', classNames, styles, ...props }, ref) {
+  function ConsoleMultiSelect({ consolePath = 'C:\\User\\multiselect', classNames, styles, label, ...props }, ref) {
     return (
-      <div style={{ position: 'relative' }}>
-        <span
+      <div>
+        {label && (
+          <div style={{ marginBottom: 4 }}>
+            <span
+              style={{
+                color: '#ffffff',
+                fontWeight: 600,
+                fontSize: '14px',
+              }}
+            >
+              {label}
+            </span>
+          </div>
+        )}
+        <div
           style={{
-            position: 'absolute',
-            top: props.label ? '38px' : '12px',
-            left: '12px',
             color: 'var(--vtb-cyan)',
             fontFamily: "'Courier New', 'Consolas', monospace",
             fontSize: '13px',
             fontWeight: 'bold',
-            whiteSpace: 'nowrap',
+            marginBottom: '4px',
             userSelect: 'none',
-            pointerEvents: 'none',
-            zIndex: 2,
-            maxWidth: 'calc(100% - 60px)',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
           }}
         >
           {consolePath} &gt;
-        </span>
+        </div>
         <MultiSelect
           ref={ref}
           {...props}
@@ -39,15 +44,10 @@ export const ConsoleMultiSelect = forwardRef<HTMLInputElement, ConsoleMultiSelec
           styles={{
             ...styles,
             input: {
-              paddingLeft: '12px',
-              paddingTop: '24px',
-              minHeight: '56px',
               ...styles?.input,
             },
             label: {
-              color: '#ffffff',
-              fontWeight: 600,
-              marginBottom: 8,
+              display: 'none',
               ...styles?.label,
             },
           }}

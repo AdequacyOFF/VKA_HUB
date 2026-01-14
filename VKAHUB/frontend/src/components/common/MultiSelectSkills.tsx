@@ -67,7 +67,7 @@ interface MultiSelectSkillsProps extends Omit<MultiSelectProps, 'data'> {
   consolePath?: string;
 }
 
-export function MultiSelectSkills({ customSkills = [], consolePath = 'C:\\User\\skills', ...props }: MultiSelectSkillsProps) {
+export function MultiSelectSkills({ customSkills = [], consolePath = 'C:\\User\\skills', label, ...props }: MultiSelectSkillsProps) {
   // Group skills by category for Mantine v7
   const groupedSkills = () => {
     const allSkills = [...AVAILABLE_SKILLS, ...customSkills];
@@ -88,27 +88,32 @@ export function MultiSelectSkills({ customSkills = [], consolePath = 'C:\\User\\
   };
 
   return (
-    <div style={{ position: 'relative' }}>
-      <span
+    <div>
+      {label && (
+        <div style={{ marginBottom: 4 }}>
+          <span
+            style={{
+              color: '#ffffff',
+              fontWeight: 600,
+              fontSize: '14px',
+            }}
+          >
+            {label}
+          </span>
+        </div>
+      )}
+      <div
         style={{
-          position: 'absolute',
-          top: props.label ? '38px' : '12px',
-          left: '12px',
           color: 'var(--vtb-cyan)',
           fontFamily: "'Courier New', 'Consolas', monospace",
           fontSize: '13px',
           fontWeight: 'bold',
-          whiteSpace: 'nowrap',
+          marginBottom: '4px',
           userSelect: 'none',
-          pointerEvents: 'none',
-          zIndex: 2,
-          maxWidth: 'calc(100% - 60px)',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
         }}
       >
         {consolePath} &gt;
-      </span>
+      </div>
       <MultiSelect
         data={groupedSkills()}
         placeholder="Выберите навыки"
@@ -128,15 +133,10 @@ export function MultiSelectSkills({ customSkills = [], consolePath = 'C:\\User\\
           },
           ...props.styles,
           input: {
-            paddingLeft: '12px',
-            paddingTop: '24px',
-            minHeight: '56px',
             ...props.styles?.input,
           },
           label: {
-            color: '#ffffff',
-            fontWeight: 600,
-            marginBottom: 8,
+            display: 'none',
             ...props.styles?.label,
           },
         }}

@@ -1,11 +1,12 @@
 // src/pages/Teams/TeamsList.tsx
 import { useState } from 'react';
-import { Container, Title, Grid, TextInput, Stack, Text } from '@mantine/core';
+import { Container, Title, Grid, Stack, Text } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { IconSearch, IconPlus } from '@tabler/icons-react';
+import { IconPlus } from '@tabler/icons-react';
 
 import { TeamCard } from '../../components/common/TeamCard';
+import { ConsoleInput } from '../../components/common/ConsoleInput';
 import { VTBCard } from '../../components/common/VTBCard';
 import { VTBButton } from '../../components/common/VTBButton';
 import { teamsApi } from '../../api';
@@ -43,18 +44,17 @@ export function TeamsList() {
 
         {/* Поиск + кнопка создания */}
         <VTBCard variant="secondary">
-          <Grid gutter="md">
-            <Grid.Col span={{ base: 12, md: 8 }}>
-              <TextInput
+          <Grid gutter="md" align="flex-end">
+            <Grid.Col span={{ base: 8, md: 9 }}>
+              <ConsoleInput
                 placeholder="Поиск команды по названию..."
-                leftSection={<IconSearch size={18} />}
+                consolePath="C:\Teams\search"
                 value={search}
                 onChange={(e) => setSearch(e.currentTarget.value)}
                 size="md"
-                classNames={{ input: 'glass-input' }}
               />
             </Grid.Col>
-            <Grid.Col span={{ base: 12, md: 4 }}>
+            <Grid.Col span={{ base: 4, md: 3 }}>
               {isAuthenticated && (
                 <VTBButton
                   fullWidth
@@ -71,7 +71,7 @@ export function TeamsList() {
         {/* Состояния */}
         {isLoading ? (
           <VTBCard variant="secondary">
-            <Text ta="center" size="lg" c="dimmed">
+            <Text ta="center" size="lg" c="white">
               Загрузка команд...
             </Text>
           </VTBCard>
@@ -83,7 +83,7 @@ export function TeamsList() {
           </VTBCard>
         ) : filteredTeams.length === 0 ? (
           <VTBCard variant="secondary">
-            <Text ta="center" size="lg" c="dimmed">
+            <Text ta="center" size="lg" c="white">
               {search ? 'Команды не найдены' : 'Пока нет ни одной команды'}
             </Text>
           </VTBCard>
