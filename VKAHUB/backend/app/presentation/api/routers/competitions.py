@@ -321,6 +321,21 @@ class SubmitCompetitionReportRequest(BaseModel):
     individual_contributions: Optional[str] = None
     team_evaluation: Optional[str] = None
     problems_faced: Optional[str] = None
+    screenshot_url: Optional[str] = None
+
+
+class UpdateCompetitionReportRequest(BaseModel):
+    """Request to update competition report"""
+    result: Optional[str] = Field(None, description="Competition result")
+    git_link: Optional[str] = Field(None, description="Link to git repository")
+    project_url: Optional[str] = Field(None, description="Link to deployed project")
+    presentation_url: Optional[str] = Field(None, description="PDF or PowerPoint presentation URL")
+    brief_summary: Optional[str] = Field(None, min_length=50, description="Brief summary")
+    technologies_used: Optional[str] = None
+    individual_contributions: Optional[str] = None
+    team_evaluation: Optional[str] = None
+    problems_faced: Optional[str] = None
+    screenshot_url: Optional[str] = None
 
 
 class CompetitionReportResponse(BaseModel):
@@ -339,6 +354,7 @@ class CompetitionReportResponse(BaseModel):
     individual_contributions: Optional[str]
     team_evaluation: Optional[str]
     problems_faced: Optional[str]
+    screenshot_url: Optional[str]
     submitted_by: int
     submitted_at: datetime
 
@@ -367,6 +383,28 @@ async def upload_presentation(
     }
 
 
+@router.post("/reports/upload-screenshot")
+async def upload_screenshot(
+    file: UploadFile = File(...),
+    current_user = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Upload screenshot file for competition report (images only)"""
+    from app.infrastructure.storage.file_handler import save_file, validate_file_type
+
+    # Validate file type - only images allowed
+    allowed_extensions = ['jpg', 'jpeg', 'png', 'gif', 'webp']
+    validate_file_type(file, allowed_extensions)
+
+    # Save file
+    file_url = await save_file(file, 'screenshots')
+
+    return {
+        "message": "Screenshot uploaded successfully",
+        "file_url": file_url
+    }
+
+
 @router.post("/{competition_id}/registrations/{registration_id}/report")
 async def submit_competition_report(
     competition_id: int,
@@ -375,8 +413,9 @@ async def submit_competition_report(
     current_user = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Submit competition report (team captain only)"""
+    """Submit competition report (any team member)"""
     from sqlalchemy import select
+    from app.domain.models.competition_team_member import CompetitionTeamMember
 
     # Get registration
     result = await db.execute(
@@ -396,11 +435,21 @@ async def submit_competition_report(
     team_repo = TeamRepositoryImpl(db)
     team = await team_repo.get_by_id(registration.team_id)
 
-    # Verify captain
-    if team.captain_id != current_user.id:
+    # Verify user is a team member (captain or regular member)
+    is_captain = team.captain_id == current_user.id
+
+    # Check if user is in the competition registration members
+    member_result = await db.execute(
+        select(CompetitionTeamMember)
+        .where(CompetitionTeamMember.registration_id == registration_id)
+        .where(CompetitionTeamMember.user_id == current_user.id)
+    )
+    is_registered_member = member_result.scalar_one_or_none() is not None
+
+    if not is_captain and not is_registered_member:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only team captain can submit competition reports"
+            detail="Only team members can submit competition reports"
         )
 
     # Check if report already exists
@@ -435,6 +484,7 @@ async def submit_competition_report(
         individual_contributions=request.individual_contributions,
         team_evaluation=request.team_evaluation,
         problems_faced=request.problems_faced,
+        screenshot_url=request.screenshot_url,
         submitted_by=current_user.id
     )
 
@@ -445,6 +495,124 @@ async def submit_competition_report(
     return {
         "message": "Report submitted successfully",
         "report_id": report.id
+    }
+
+
+@router.put("/reports/{report_id}")
+async def update_competition_report(
+    report_id: int,
+    request: UpdateCompetitionReportRequest,
+    current_user = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Update competition report (any team member)"""
+    from sqlalchemy import select
+
+    # Get report
+    result = await db.execute(
+        select(CompetitionReport).where(CompetitionReport.id == report_id)
+    )
+    report = result.scalar_one_or_none()
+
+    if not report:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Report not found"
+        )
+
+    # Get registration to find team
+    reg_result = await db.execute(
+        select(CompetitionRegistration).where(CompetitionRegistration.id == report.registration_id)
+    )
+    registration = reg_result.scalar_one_or_none()
+
+    # Get team
+    team_repo = TeamRepositoryImpl(db)
+    team = await team_repo.get_by_id(registration.team_id)
+
+    # Check permissions: must be team member (captain or regular member)
+    is_captain = team.captain_id == current_user.id
+    members = await team_repo.get_team_members(registration.team_id)
+    is_member = any(m.user_id == current_user.id for m in members)
+
+    if not is_captain and not is_member:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only team members can update the report"
+        )
+
+    # Update fields
+    update_data = request.model_dump(exclude_unset=True)
+
+    if 'result' in update_data and update_data['result']:
+        try:
+            update_data['result'] = CompetitionResult(update_data['result'])
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid result. Must be one of: {', '.join([r.value for r in CompetitionResult])}"
+            )
+
+    for key, value in update_data.items():
+        if hasattr(report, key):
+            setattr(report, key, value)
+
+    await db.commit()
+    await db.refresh(report)
+
+    return {
+        "message": "Report updated successfully",
+        "report_id": report.id
+    }
+
+
+@router.delete("/reports/{report_id}")
+async def delete_competition_report(
+    report_id: int,
+    current_user = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Delete competition report (any team member)"""
+    from sqlalchemy import select
+
+    # Get report
+    result = await db.execute(
+        select(CompetitionReport).where(CompetitionReport.id == report_id)
+    )
+    report = result.scalar_one_or_none()
+
+    if not report:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Report not found"
+        )
+
+    # Get registration to find team
+    reg_result = await db.execute(
+        select(CompetitionRegistration).where(CompetitionRegistration.id == report.registration_id)
+    )
+    registration = reg_result.scalar_one_or_none()
+
+    # Get team
+    team_repo = TeamRepositoryImpl(db)
+    team = await team_repo.get_by_id(registration.team_id)
+
+    # Check permissions: must be team member (captain or regular member)
+    is_captain = team.captain_id == current_user.id
+    members = await team_repo.get_team_members(registration.team_id)
+    is_member = any(m.user_id == current_user.id for m in members)
+
+    if not is_captain and not is_member:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only team members can delete reports"
+        )
+
+    await db.delete(report)
+    await db.commit()
+
+    return {
+        "message": "Report deleted successfully"
     }
 
 
@@ -573,32 +741,67 @@ async def get_completed_competitions_for_my_teams(
     current_user = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Get list of completed competitions that teams captained by current user participated in"""
+    """Get list of all competitions that user's teams participated in (as captain or member)"""
     from sqlalchemy import select
-    from datetime import date
+    from app.domain.models.competition_team_member import CompetitionTeamMember
+    from app.domain.models.team import Team
 
     team_repo = TeamRepositoryImpl(db)
-    teams = await team_repo.get_teams_by_captain(current_user.id)
 
-    completed_competitions = []
-    for team in teams:
-        # Get registrations for this team where competition has ended
+    # Get teams where user is captain
+    captain_teams_result = await db.execute(
+        select(Team).where(Team.captain_id == current_user.id)
+    )
+    captain_teams = captain_teams_result.scalars().all()
+
+    # Get teams where user is a member (via competition registrations)
+    member_registrations_result = await db.execute(
+        select(CompetitionTeamMember.registration_id)
+        .where(CompetitionTeamMember.user_id == current_user.id)
+    )
+    member_registration_ids = [r[0] for r in member_registrations_result.all()]
+
+    # Get unique team IDs from registrations where user is a member
+    member_team_ids = set()
+    if member_registration_ids:
+        registrations_result = await db.execute(
+            select(CompetitionRegistration.team_id)
+            .where(CompetitionRegistration.id.in_(member_registration_ids))
+        )
+        member_team_ids = {r[0] for r in registrations_result.all()}
+
+    # Combine captain and member teams
+    all_team_ids = {team.id for team in captain_teams} | member_team_ids
+
+    all_competitions = []
+    seen_registrations = set()  # Avoid duplicates
+
+    for team_id in all_team_ids:
+        # Get team info
+        team = await team_repo.get_by_id(team_id)
+        if not team:
+            continue
+
+        # Get all registrations for this team (no date filter)
         result = await db.execute(
             select(CompetitionRegistration, Competition)
             .join(Competition, CompetitionRegistration.competition_id == Competition.id)
-            .where(CompetitionRegistration.team_id == team.id)
-            .where(Competition.end_date < date.today())  # Only completed competitions
+            .where(CompetitionRegistration.team_id == team_id)
         )
 
         registrations_data = result.all()
         for registration, competition in registrations_data:
+            if registration.id in seen_registrations:
+                continue
+            seen_registrations.add(registration.id)
+
             # Check if report already submitted
             report_check = await db.execute(
                 select(CompetitionReport).where(CompetitionReport.registration_id == registration.id)
             )
             has_report = report_check.scalar_one_or_none() is not None
 
-            completed_competitions.append({
+            all_competitions.append({
                 "registration_id": registration.id,
                 "competition_id": competition.id,
                 "competition_name": competition.name,
@@ -610,8 +813,8 @@ async def get_completed_competitions_for_my_teams(
             })
 
     return {
-        "total": len(completed_competitions),
-        "competitions": completed_competitions
+        "total": len(all_competitions),
+        "competitions": all_competitions
     }
 
 
@@ -1025,6 +1228,12 @@ async def get_competition_registrations(
                     "login": captain_user.login
                 }
 
+        # Check if report already submitted
+        report_check = await db.execute(
+            select(CompetitionReport).where(CompetitionReport.registration_id == registration.id)
+        )
+        has_report = report_check.scalar_one_or_none() is not None
+
         registrations_data.append({
             "id": registration.id,
             "team_id": team.id,
@@ -1036,7 +1245,8 @@ async def get_competition_registrations(
             "address": registration.address,
             "status": registration.status,
             "applied_at": registration.applied_at.isoformat(),
-            "case_id": registration.case_id
+            "case_id": registration.case_id,
+            "has_report": has_report
         })
 
     return {

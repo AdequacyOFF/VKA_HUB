@@ -74,6 +74,17 @@ export const competitionsApi = {
     return response.data;
   },
 
+  uploadScreenshot: async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await axiosInstance.post('/api/competitions/reports/upload-screenshot', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+
   submitCompetitionReport: async (competitionId: number, registrationId: number, reportData: {
     result: string;
     git_link: string;
@@ -84,11 +95,33 @@ export const competitionsApi = {
     individual_contributions?: string;
     team_evaluation?: string;
     problems_faced?: string;
+    screenshot_url?: string;
   }) => {
     const response = await axiosInstance.post(
       `/api/competitions/${competitionId}/registrations/${registrationId}/report`,
       reportData
     );
+    return response.data;
+  },
+
+  updateCompetitionReport: async (reportId: number, reportData: {
+    result?: string;
+    git_link?: string;
+    project_url?: string;
+    presentation_url?: string;
+    brief_summary?: string;
+    technologies_used?: string;
+    individual_contributions?: string;
+    team_evaluation?: string;
+    problems_faced?: string;
+    screenshot_url?: string;
+  }) => {
+    const response = await axiosInstance.put(`/api/competitions/reports/${reportId}`, reportData);
+    return response.data;
+  },
+
+  deleteCompetitionReport: async (reportId: number) => {
+    const response = await axiosInstance.delete(`/api/competitions/reports/${reportId}`);
     return response.data;
   },
 

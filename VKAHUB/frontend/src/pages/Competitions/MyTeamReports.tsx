@@ -158,7 +158,7 @@ export default function MyTeamReports() {
                       style={{ display: 'flex', alignItems: 'center', gap: 4 }}
                     >
                       <IconBrandGithub size={18} />
-                      GitHub
+                      Репозиторий
                     </Anchor>
 
                     {report.project_url && (

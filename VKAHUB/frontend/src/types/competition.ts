@@ -58,6 +58,7 @@ export interface Application {
   team_id: number;
   member_ids: number[];
   case_id?: number | null;
+  address?: string;
 }
 
 export interface Registration {

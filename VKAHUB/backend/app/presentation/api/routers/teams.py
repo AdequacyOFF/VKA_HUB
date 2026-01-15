@@ -478,8 +478,12 @@ async def get_team_reports(
     current_user = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Get team reports (captain only)"""
+    """Get competition reports for a team (any team member can view)"""
     from app.domain.models.competition_report import CompetitionReport
+    from app.domain.models.competition_registration import CompetitionRegistration
+    from app.domain.models.competition import Competition
+    from sqlalchemy import select
+    from sqlalchemy.orm import selectinload
 
     team_repo = TeamRepositoryImpl(db)
     team = await team_repo.get_by_id(team_id)
@@ -490,34 +494,73 @@ async def get_team_reports(
             detail="Team not found"
         )
 
-    # Check if user is captain (moderator check can be added)
-    if team.captain_id != current_user.id:
+    # Check if user is team member (captain or regular member)
+    is_captain = team.captain_id == current_user.id
+    members = await team_repo.get_team_members(team_id)
+    is_member = any(m.user_id == current_user.id for m in members)
+
+    if not is_captain and not is_member:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only team captain can view reports"
+            detail="Only team members can view reports"
         )
 
-    # Get reports for this team
-    from sqlalchemy import select
-    result = await db.execute(
-        select(CompetitionReport)
-        .where(CompetitionReport.team_id == team_id)
-        .order_by(CompetitionReport.created_at.desc())
+    # Get all competition registrations for this team
+    registrations_result = await db.execute(
+        select(CompetitionRegistration)
+        .where(CompetitionRegistration.team_id == team_id)
     )
-    reports = result.scalars().all()
+    registrations = registrations_result.scalars().all()
+    registration_ids = [r.id for r in registrations]
 
-    return [
-        {
-            "id": r.id,
-            "competition_id": r.competition_id,
-            "team_id": r.team_id,
-            "file_url": r.file_url,
-            "status": r.status,
-            "submitted_by": r.submitted_by,
-            "created_at": r.created_at.isoformat() if r.created_at else None
-        }
-        for r in reports
-    ]
+    if not registration_ids:
+        return []
+
+    # Get all competition reports for these registrations
+    reports_result = await db.execute(
+        select(CompetitionReport)
+        .where(CompetitionReport.registration_id.in_(registration_ids))
+        .order_by(CompetitionReport.submitted_at.desc())
+    )
+    reports = reports_result.scalars().all()
+
+    # Build result with competition info
+    result = []
+    for report in reports:
+        # Find registration and competition
+        registration = next((r for r in registrations if r.id == report.registration_id), None)
+        if not registration:
+            continue
+
+        # Get competition info
+        competition_result = await db.execute(
+            select(Competition).where(Competition.id == registration.competition_id)
+        )
+        competition = competition_result.scalar_one_or_none()
+
+        result.append({
+            "id": report.id,
+            "registration_id": report.registration_id,
+            "team_id": team_id,
+            "team_name": team.name,
+            "competition_id": registration.competition_id,
+            "competition_name": competition.name if competition else "Unknown",
+            "result": report.result.value if report.result else None,
+            "git_link": report.git_link,
+            "project_url": report.project_url,
+            "presentation_url": report.presentation_url,
+            "brief_summary": report.brief_summary,
+            "placement": report.placement,
+            "technologies_used": report.technologies_used,
+            "individual_contributions": report.individual_contributions,
+            "team_evaluation": report.team_evaluation,
+            "problems_faced": report.problems_faced,
+            "screenshot_url": report.screenshot_url,
+            "submitted_by": report.submitted_by,
+            "submitted_at": report.submitted_at.isoformat() if report.submitted_at else None,
+        })
+
+    return result
 
 
 @router.get("/{team_id}/join-requests")

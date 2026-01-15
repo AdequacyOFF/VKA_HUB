@@ -1,23 +1,51 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
   Container,
   Title,
   Text,
   Stack,
-  TextInput,
   Textarea,
   Alert,
   Group,
   Select,
-  FileInput,
+  Image,
+  rem,
 } from '@mantine/core';
+import { Dropzone, MIME_TYPES } from '@mantine/dropzone';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
-import { IconAlertCircle, IconFileText, IconUpload, IconTrophy } from '@tabler/icons-react';
+import { IconAlertCircle, IconUpload, IconX, IconFileText, IconPhoto } from '@tabler/icons-react';
 import { VTBCard } from '../../components/common/VTBCard';
 import { VTBButton } from '../../components/common/VTBButton';
+import { ConsoleInput } from '../../components/common/ConsoleInput';
 import { competitionsApi } from '../../api/competitions';
+
+// Console path label component for non-TextInput fields
+const ConsoleLabel = ({ path, label, children }: { path: string; label?: string; children: React.ReactNode }) => (
+  <div>
+    {label && (
+      <div style={{ marginBottom: 4 }}>
+        <span style={{ color: '#ffffff', fontWeight: 600, fontSize: '14px' }}>
+          {label}
+        </span>
+      </div>
+    )}
+    <div
+      style={{
+        color: 'var(--vtb-cyan)',
+        fontFamily: "'Courier New', 'Consolas', monospace",
+        fontSize: '13px',
+        fontWeight: 'bold',
+        marginBottom: '4px',
+        userSelect: 'none',
+      }}
+    >
+      {path} &gt;
+    </div>
+    {children}
+  </div>
+);
 
 interface CompletedCompetition {
   registration_id: number;
@@ -41,10 +69,15 @@ const RESULT_OPTIONS = [
 
 export default function SubmitCompetitionReport() {
   const navigate = useNavigate();
+  const { registrationId } = useParams<{ competitionId?: string; registrationId?: string }>();
   const [loading, setLoading] = useState(false);
   const [uploadingPresentation, setUploadingPresentation] = useState(false);
+  const [uploadingScreenshot, setUploadingScreenshot] = useState(false);
   const [completedCompetitions, setCompletedCompetitions] = useState<CompletedCompetition[]>([]);
   const [selectedCompetition, setSelectedCompetition] = useState<CompletedCompetition | null>(null);
+  const [initialized, setInitialized] = useState(false);
+  const [presentationFile, setPresentationFile] = useState<File | null>(null);
+  const [screenshotFile, setScreenshotFile] = useState<File | null>(null);
 
   const form = useForm({
     initialValues: {
@@ -52,8 +85,8 @@ export default function SubmitCompetitionReport() {
       result: '',
       git_link: '',
       project_url: '',
-      presentation_file: null as File | null,
       presentation_url: '',
+      screenshot_url: '',
       brief_summary: '',
       technologies_used: '',
       individual_contributions: '',
@@ -72,8 +105,8 @@ export default function SubmitCompetitionReport() {
         if (value && !/^https?:\/\/.+/.test(value)) return 'Введите корректный URL';
         return null;
       },
-      presentation_file: (value) => {
-        if (!value && !form.values.presentation_url) return 'Загрузите презентацию';
+      presentation_url: (value) => {
+        if (!value) return 'Загрузите презентацию';
         return null;
       },
       brief_summary: (value) => {
@@ -101,6 +134,29 @@ export default function SubmitCompetitionReport() {
     fetchCompletedCompetitions();
   }, []);
 
+  // Auto-select competition if URL params are provided
+  useEffect(() => {
+    if (completedCompetitions.length > 0 && registrationId && !initialized) {
+      const competition = completedCompetitions.find(
+        (c) => c.registration_id.toString() === registrationId
+      );
+
+      if (competition) {
+        setSelectedCompetition(competition);
+        form.setFieldValue('registration_id', registrationId);
+        setInitialized(true);
+
+        if (competition.has_report) {
+          notifications.show({
+            title: 'Внимание',
+            message: 'Для этого соревнования уже был подан отчет',
+            color: 'yellow',
+          });
+        }
+      }
+    }
+  }, [completedCompetitions, registrationId, initialized]);
+
   const handleCompetitionSelect = (registrationId: string | null) => {
     if (!registrationId) {
       setSelectedCompetition(null);
@@ -126,14 +182,11 @@ export default function SubmitCompetitionReport() {
     }
   };
 
-  const handlePresentationUpload = async (file: File | null) => {
-    if (!file) {
-      form.setFieldValue('presentation_file', null);
-      form.setFieldValue('presentation_url', '');
-      return;
-    }
+  const handlePresentationDrop = async (files: File[]) => {
+    const file = files[0];
+    if (!file) return;
 
-    form.setFieldValue('presentation_file', file);
+    setPresentationFile(file);
     setUploadingPresentation(true);
 
     try {
@@ -150,9 +203,36 @@ export default function SubmitCompetitionReport() {
         message: error.response?.data?.detail || 'Не удалось загрузить презентацию',
         color: 'red',
       });
-      form.setFieldValue('presentation_file', null);
+      setPresentationFile(null);
     } finally {
       setUploadingPresentation(false);
+    }
+  };
+
+  const handleScreenshotDrop = async (files: File[]) => {
+    const file = files[0];
+    if (!file) return;
+
+    setScreenshotFile(file);
+    setUploadingScreenshot(true);
+
+    try {
+      const response = await competitionsApi.uploadScreenshot(file);
+      form.setFieldValue('screenshot_url', response.file_url);
+      notifications.show({
+        title: 'Успех',
+        message: 'Скриншот успешно загружен!',
+        color: 'teal',
+      });
+    } catch (error: any) {
+      notifications.show({
+        title: 'Ошибка',
+        message: error.response?.data?.detail || 'Не удалось загрузить скриншот',
+        color: 'red',
+      });
+      setScreenshotFile(null);
+    } finally {
+      setUploadingScreenshot(false);
     }
   };
 
@@ -190,6 +270,7 @@ export default function SubmitCompetitionReport() {
           individual_contributions: values.individual_contributions || undefined,
           team_evaluation: values.team_evaluation || undefined,
           problems_faced: values.problems_faced || undefined,
+          screenshot_url: values.screenshot_url || undefined,
         }
       );
 
@@ -240,20 +321,18 @@ export default function SubmitCompetitionReport() {
             <Stack gap="lg">
               <Text fw={700} size="lg" c="white">Выбор соревнования</Text>
 
-              <Select
-                label="Соревнование"
-                placeholder="Выберите завершенное соревнование"
-                data={competitionOptions}
-                size="md"
-                classNames={{ input: 'glass-input' }}
-                styles={{
-                  label: { color: '#ffffff', fontWeight: 600, marginBottom: 8 },
-                }}
-                {...form.getInputProps('registration_id')}
-                onChange={handleCompetitionSelect}
-                required
-                searchable
-              />
+              <ConsoleLabel path="C:\Report\competition" label="Соревнование">
+                <Select
+                  placeholder="Выберите завершенное соревнование"
+                  data={competitionOptions}
+                  size="md"
+                  classNames={{ input: 'glass-input' }}
+                  {...form.getInputProps('registration_id')}
+                  onChange={handleCompetitionSelect}
+                  required
+                  searchable
+                />
+              </ConsoleLabel>
 
               {selectedCompetition && (
                 <Alert color="cyan" variant="light">
@@ -267,129 +346,215 @@ export default function SubmitCompetitionReport() {
 
               <Text fw={700} size="lg" c="white" mt="md">Результаты участия</Text>
 
-              <Select
-                label="Результат"
-                placeholder="Выберите результат"
-                data={RESULT_OPTIONS}
-                size="md"
-                classNames={{ input: 'glass-input' }}
-                styles={{
-                  label: { color: '#ffffff', fontWeight: 600, marginBottom: 8 },
-                }}
-                leftSection={<IconTrophy size={18} />}
-                {...form.getInputProps('result')}
-                required
-              />
+              <ConsoleLabel path="C:\Report\result" label="Результат">
+                <Select
+                  placeholder="Выберите результат"
+                  data={RESULT_OPTIONS}
+                  size="md"
+                  classNames={{ input: 'glass-input' }}
+                  {...form.getInputProps('result')}
+                  required
+                />
+              </ConsoleLabel>
 
               <Text fw={700} size="lg" c="white" mt="md">Проектные материалы</Text>
 
-              <TextInput
+              <ConsoleInput
                 label="Ссылка на GitHub"
+                consolePath="C:\Report\github"
                 placeholder="https://github.com/username/project"
-                leftSection={<IconFileText size={18} />}
                 size="md"
-                classNames={{ input: 'glass-input' }}
-                styles={{
-                  label: { color: '#ffffff', fontWeight: 600, marginBottom: 8 },
-                }}
                 {...form.getInputProps('git_link')}
                 required
               />
 
-              <TextInput
+              <ConsoleInput
                 label="Ссылка на развернутый проект (опционально)"
+                consolePath="C:\Report\project_url"
                 placeholder="https://myproject.com"
-                leftSection={<IconFileText size={18} />}
                 size="md"
-                classNames={{ input: 'glass-input' }}
-                styles={{
-                  label: { color: '#ffffff', fontWeight: 600, marginBottom: 8 },
-                }}
                 {...form.getInputProps('project_url')}
               />
 
-              <FileInput
-                label="Презентация (PDF или PowerPoint)"
-                placeholder="Выберите файл"
-                leftSection={<IconUpload size={18} />}
-                size="md"
-                classNames={{ input: 'glass-input' }}
-                styles={{
-                  label: { color: '#ffffff', fontWeight: 600, marginBottom: 8 },
-                }}
-                accept=".pdf,.ppt,.pptx"
-                {...form.getInputProps('presentation_file')}
-                onChange={handlePresentationUpload}
-                disabled={uploadingPresentation}
-                required
-              />
+              {/* Drag & Drop для презентации */}
+              <ConsoleLabel path="C:\Report\presentation" label="Презентация (PDF или PowerPoint)">
+                <Dropzone
+                  onDrop={handlePresentationDrop}
+                  onReject={() => {
+                    notifications.show({
+                      title: 'Ошибка',
+                      message: 'Допустимые форматы: PDF, PPT, PPTX',
+                      color: 'red',
+                    });
+                  }}
+                  maxSize={50 * 1024 * 1024}
+                  accept={[MIME_TYPES.pdf, 'application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation']}
+                  loading={uploadingPresentation}
+                  style={{
+                    background: 'rgba(0, 217, 255, 0.05)',
+                    border: '2px dashed var(--vtb-cyan)',
+                    borderRadius: 8,
+                  }}
+                >
+                  <Group justify="center" gap="xl" mih={100} style={{ pointerEvents: 'none' }}>
+                    <Dropzone.Accept>
+                      <IconUpload
+                        style={{ width: rem(52), height: rem(52), color: 'var(--vtb-cyan)' }}
+                        stroke={1.5}
+                      />
+                    </Dropzone.Accept>
+                    <Dropzone.Reject>
+                      <IconX
+                        style={{ width: rem(52), height: rem(52), color: 'var(--mantine-color-red-6)' }}
+                        stroke={1.5}
+                      />
+                    </Dropzone.Reject>
+                    <Dropzone.Idle>
+                      <IconFileText
+                        style={{ width: rem(52), height: rem(52), color: 'var(--vtb-cyan)' }}
+                        stroke={1.5}
+                      />
+                    </Dropzone.Idle>
 
-              {uploadingPresentation && (
-                <Text size="sm" c="dimmed">Загрузка презентации...</Text>
-              )}
+                    <div>
+                      <Text size="lg" c="white" inline>
+                        {presentationFile ? presentationFile.name : 'Перетащите файл сюда или нажмите для выбора'}
+                      </Text>
+                      <Text size="sm" c="dimmed" inline mt={7}>
+                        PDF, PPT или PPTX (до 50 МБ)
+                      </Text>
+                      {form.values.presentation_url && (
+                        <Text size="sm" c="teal" mt={4}>
+                          ✓ Файл загружен
+                        </Text>
+                      )}
+                    </div>
+                  </Group>
+                </Dropzone>
+                {form.errors.presentation_url && (
+                  <Text size="sm" c="red" mt={4}>{form.errors.presentation_url}</Text>
+                )}
+              </ConsoleLabel>
 
-              <Textarea
-                label="Описание участия"
-                placeholder="Опишите, что вы делали в рамках соревнования, как проходило участие, какие задачи решали..."
-                minRows={6}
-                size="md"
-                classNames={{ input: 'glass-input' }}
-                styles={{
-                  label: { color: '#ffffff', fontWeight: 600, marginBottom: 8 },
-                }}
-                {...form.getInputProps('brief_summary')}
-                required
-              />
+              {/* Drag & Drop для скриншота */}
+              <ConsoleLabel path="C:\Report\screenshot" label="Скриншот результата (опционально)">
+                <Dropzone
+                  onDrop={handleScreenshotDrop}
+                  onReject={() => {
+                    notifications.show({
+                      title: 'Ошибка',
+                      message: 'Допустимые форматы: JPG, PNG, GIF, WebP',
+                      color: 'red',
+                    });
+                  }}
+                  maxSize={10 * 1024 * 1024}
+                  accept={[MIME_TYPES.png, MIME_TYPES.jpeg, MIME_TYPES.gif, MIME_TYPES.webp]}
+                  loading={uploadingScreenshot}
+                  style={{
+                    background: 'rgba(0, 217, 255, 0.05)',
+                    border: '2px dashed var(--vtb-cyan)',
+                    borderRadius: 8,
+                  }}
+                >
+                  <Group justify="center" gap="xl" mih={100} style={{ pointerEvents: 'none' }}>
+                    <Dropzone.Accept>
+                      <IconUpload
+                        style={{ width: rem(52), height: rem(52), color: 'var(--vtb-cyan)' }}
+                        stroke={1.5}
+                      />
+                    </Dropzone.Accept>
+                    <Dropzone.Reject>
+                      <IconX
+                        style={{ width: rem(52), height: rem(52), color: 'var(--mantine-color-red-6)' }}
+                        stroke={1.5}
+                      />
+                    </Dropzone.Reject>
+                    <Dropzone.Idle>
+                      <IconPhoto
+                        style={{ width: rem(52), height: rem(52), color: 'var(--vtb-cyan)' }}
+                        stroke={1.5}
+                      />
+                    </Dropzone.Idle>
+
+                    <div>
+                      <Text size="lg" c="white" inline>
+                        {screenshotFile ? screenshotFile.name : 'Перетащите скриншот сюда или нажмите для выбора'}
+                      </Text>
+                      <Text size="sm" c="dimmed" inline mt={7}>
+                        JPG, PNG, GIF или WebP (до 10 МБ)
+                      </Text>
+                      {form.values.screenshot_url && (
+                        <Text size="sm" c="teal" mt={4}>
+                          ✓ Скриншот загружен
+                        </Text>
+                      )}
+                    </div>
+                  </Group>
+                </Dropzone>
+                {form.values.screenshot_url && (
+                  <Image
+                    src={form.values.screenshot_url}
+                    alt="Preview"
+                    maw={300}
+                    mt="md"
+                    radius="md"
+                    style={{ border: '1px solid var(--vtb-cyan)' }}
+                  />
+                )}
+              </ConsoleLabel>
+
+              <ConsoleLabel path="C:\Report\summary" label="Описание участия">
+                <Textarea
+                  placeholder="Опишите, что вы делали в рамках соревнования, как проходило участие, какие задачи решали..."
+                  minRows={6}
+                  size="md"
+                  classNames={{ input: 'glass-input' }}
+                  {...form.getInputProps('brief_summary')}
+                  required
+                />
+              </ConsoleLabel>
 
               <Text fw={700} size="lg" c="white" mt="md">Дополнительная информация (необязательно)</Text>
 
-              <Textarea
-                label="Использованные технологии"
-                placeholder="React, Node.js, PostgreSQL, Docker..."
-                minRows={3}
-                size="md"
-                classNames={{ input: 'glass-input' }}
-                styles={{
-                  label: { color: '#ffffff', fontWeight: 600, marginBottom: 8 },
-                }}
-                {...form.getInputProps('technologies_used')}
-              />
+              <ConsoleLabel path="C:\Report\technologies" label="Использованные технологии">
+                <Textarea
+                  placeholder="React, Node.js, PostgreSQL, Docker..."
+                  minRows={3}
+                  size="md"
+                  classNames={{ input: 'glass-input' }}
+                  {...form.getInputProps('technologies_used')}
+                />
+              </ConsoleLabel>
 
-              <Textarea
-                label="Вклад участников"
-                placeholder="Опишите, кто чем занимался в команде..."
-                minRows={4}
-                size="md"
-                classNames={{ input: 'glass-input' }}
-                styles={{
-                  label: { color: '#ffffff', fontWeight: 600, marginBottom: 8 },
-                }}
-                {...form.getInputProps('individual_contributions')}
-              />
+              <ConsoleLabel path="C:\Report\contributions" label="Вклад участников">
+                <Textarea
+                  placeholder="Опишите, кто чем занимался в команде..."
+                  minRows={4}
+                  size="md"
+                  classNames={{ input: 'glass-input' }}
+                  {...form.getInputProps('individual_contributions')}
+                />
+              </ConsoleLabel>
 
-              <Textarea
-                label="Оценка работы команды"
-                placeholder="Как вы оцениваете работу команды в целом..."
-                minRows={3}
-                size="md"
-                classNames={{ input: 'glass-input' }}
-                styles={{
-                  label: { color: '#ffffff', fontWeight: 600, marginBottom: 8 },
-                }}
-                {...form.getInputProps('team_evaluation')}
-              />
+              <ConsoleLabel path="C:\Report\evaluation" label="Оценка работы команды">
+                <Textarea
+                  placeholder="Как вы оцениваете работу команды в целом..."
+                  minRows={3}
+                  size="md"
+                  classNames={{ input: 'glass-input' }}
+                  {...form.getInputProps('team_evaluation')}
+                />
+              </ConsoleLabel>
 
-              <Textarea
-                label="Проблемы и сложности"
-                placeholder="С какими проблемами столкнулись, как их решали..."
-                minRows={3}
-                size="md"
-                classNames={{ input: 'glass-input' }}
-                styles={{
-                  label: { color: '#ffffff', fontWeight: 600, marginBottom: 8 },
-                }}
-                {...form.getInputProps('problems_faced')}
-              />
+              <ConsoleLabel path="C:\Report\problems" label="Проблемы и сложности">
+                <Textarea
+                  placeholder="С какими проблемами столкнулись, как их решали..."
+                  minRows={3}
+                  size="md"
+                  classNames={{ input: 'glass-input' }}
+                  {...form.getInputProps('problems_faced')}
+                />
+              </ConsoleLabel>
 
               <Group justify="flex-end" mt="xl">
                 <VTBButton
@@ -401,8 +566,7 @@ export default function SubmitCompetitionReport() {
                 <VTBButton
                   type="submit"
                   loading={loading}
-                  disabled={uploadingPresentation}
-                  leftSection={<IconFileText size={18} />}
+                  disabled={uploadingPresentation || uploadingScreenshot}
                 >
                   Отправить отчет
                 </VTBButton>
@@ -413,7 +577,7 @@ export default function SubmitCompetitionReport() {
 
         <Alert icon={<IconAlertCircle />} color="yellow" variant="light">
           <Text size="sm">
-            <strong>Важно:</strong> Отчет может быть подан только капитаном команды.
+            <strong>Важно:</strong> Отчет может быть подан любым участником команды от её имени.
             Убедитесь, что все данные заполнены корректно перед отправкой.
           </Text>
         </Alert>

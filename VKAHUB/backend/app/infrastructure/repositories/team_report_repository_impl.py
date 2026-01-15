@@ -30,10 +30,18 @@ class TeamReportRepositoryImpl(TeamReportRepository):
         )
         return result.scalars().all()
     
-    async def update(self, team_report: TeamReport) -> TeamReport:
-        await self.db.commit()
-        await self.db.refresh(team_report)
-        return team_report
+    async def update(self, report_id: int, update_data: dict) -> Optional[TeamReport]:
+        report = await self.get_by_id(report_id)
+        if not report:
+            return None
+
+        for key, value in update_data.items():
+            if hasattr(report, key):
+                setattr(report, key, value)
+
+        await self.db.flush()
+        await self.db.refresh(report)
+        return report
     
     async def delete(self, report_id: int) -> bool:
         report = await self.get_by_id(report_id)

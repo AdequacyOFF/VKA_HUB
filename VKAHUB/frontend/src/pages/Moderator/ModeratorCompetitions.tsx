@@ -224,7 +224,7 @@ export function ModeratorCompetitions() {
                         href={report.git_link}
                         target="_blank"
                       >
-                        GitHub
+                        Репозиторий
                       </VTBButton>
                       <VTBButton
                         size="sm"

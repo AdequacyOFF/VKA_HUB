@@ -1,27 +1,91 @@
-import { Container, Title, Stack, Text, Grid, Group, Badge, Button, Modal, TextInput, Textarea } from '@mantine/core';
+import { useState } from 'react';
+import { Container, Title, Stack, Text, Group, Badge, Anchor, Modal, Select, Textarea, Image } from '@mantine/core';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { IconArrowLeft, IconFileText, IconCalendar, IconPlus } from '@tabler/icons-react';
+import { IconArrowLeft, IconFileText, IconTrophy, IconBrandGithub, IconExternalLink, IconEdit, IconTrash, IconPhoto } from '@tabler/icons-react';
+import { notifications } from '@mantine/notifications';
 import { VTBCard } from '../../components/common/VTBCard';
 import { VTBButton } from '../../components/common/VTBButton';
+import { ConsoleInput } from '../../components/common/ConsoleInput';
 import { api } from '../../api';
-import dayjs from 'dayjs';
-import { useState } from 'react';
-import { notifications } from '@mantine/notifications';
+import { competitionsApi } from '../../api/competitions';
 import { useAuthStore } from '../../store/authStore';
 import { queryKeys } from '../../api/queryKeys';
-import { invalidateTeamQueries } from '../../utils/cacheInvalidation';
 
-interface Report {
+interface CompetitionReport {
   id: number;
-  title: string;
-  content: string;
-  created_at: string;
-  updated_at: string;
+  registration_id: number;
   team_id: number;
-  author_id: number;
-  author_name?: string;
+  team_name: string;
+  competition_id: number;
+  competition_name: string;
+  result: string;
+  git_link: string;
+  project_url?: string;
+  presentation_url: string;
+  brief_summary: string;
+  placement?: number;
+  technologies_used?: string;
+  individual_contributions?: string;
+  team_evaluation?: string;
+  problems_faced?: string;
+  screenshot_url?: string;
+  submitted_by: number;
+  submitted_at: string;
 }
+
+const RESULT_LABELS: Record<string, string> = {
+  '1st_place': '1 место',
+  '2nd_place': '2 место',
+  '3rd_place': '3 место',
+  'finalist': 'Финалист',
+  'semi_finalist': 'Полуфиналист',
+  'did_not_pass': 'Не прошли',
+};
+
+const RESULT_COLORS: Record<string, string> = {
+  '1st_place': 'yellow',
+  '2nd_place': 'gray',
+  '3rd_place': 'orange',
+  'finalist': 'teal',
+  'semi_finalist': 'blue',
+  'did_not_pass': 'red',
+};
+
+const RESULT_OPTIONS = [
+  { value: '1st_place', label: '1 место' },
+  { value: '2nd_place', label: '2 место' },
+  { value: '3rd_place', label: '3 место' },
+  { value: 'finalist', label: 'Финалист' },
+  { value: 'semi_finalist', label: 'Полуфиналист' },
+  { value: 'did_not_pass', label: 'Не прошли' },
+];
+
+// Console path label component
+const ConsoleLabel = ({ path, label, children }: { path: string; label?: string; children: React.ReactNode }) => (
+  <div>
+    {label && (
+      <div style={{ marginBottom: 4 }}>
+        <span style={{ color: '#ffffff', fontWeight: 600, fontSize: '14px' }}>
+          {label}
+        </span>
+      </div>
+    )}
+    <div
+      style={{
+        color: 'var(--vtb-cyan)',
+        fontFamily: "'Courier New', 'Consolas', monospace",
+        fontSize: '13px',
+        fontWeight: 'bold',
+        marginBottom: '4px',
+        userSelect: 'none',
+      }}
+    >
+      {path} &gt;
+    </div>
+    {children}
+  </div>
+);
 
 export function TeamReports() {
   const navigate = useNavigate();
@@ -29,24 +93,27 @@ export function TeamReports() {
   const location = useLocation();
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
-  
-  const [createModalOpened, setCreateModalOpened] = useState(false);
+
   const [editModalOpened, setEditModalOpened] = useState(false);
   const [deleteModalOpened, setDeleteModalOpened] = useState(false);
-  const [selectedReport, setSelectedReport] = useState<Report | null>(null);
-  const [newReport, setNewReport] = useState({
-    title: '',
-    content: ''
-  });
-  const [editReport, setEditReport] = useState({
-    title: '',
-    content: ''
+  const [selectedReport, setSelectedReport] = useState<CompetitionReport | null>(null);
+  const [editForm, setEditForm] = useState({
+    result: '',
+    git_link: '',
+    project_url: '',
+    presentation_url: '',
+    brief_summary: '',
+    technologies_used: '',
+    individual_contributions: '',
+    team_evaluation: '',
+    problems_faced: '',
+    screenshot_url: '',
   });
 
-  // ✅ Определяем источник перехода
+  // Определяем источник перехода
   const fromProfile = location.state?.from === 'profile';
-  
-  // ✅ Получаем информацию о команде для проверки капитана
+
+  // Получаем информацию о команде
   const { data: team } = useQuery({
     queryKey: queryKeys.teams.detail(id!),
     queryFn: async () => {
@@ -61,13 +128,13 @@ export function TeamReports() {
     enabled: !!id,
   });
 
-  // ✅ Проверяем, является ли пользователь капитаном
+  // Проверяем, является ли пользователь капитаном
   const isCaptain = team?.captain_id === user?.id;
-  
-  // ✅ Проверяем, можно ли добавлять отчеты
-  const canAddReports = fromProfile && isCaptain;
 
-  const { data: reports = [], isLoading } = useQuery<Report[]>({
+  // Проверяем, является ли пользователь членом команды
+  const isTeamMember = isCaptain || (team?.members?.some((m: any) => m.user_id === user?.id) ?? false);
+
+  const { data: reports = [], isLoading } = useQuery<CompetitionReport[]>({
     queryKey: queryKeys.teams.reports(id!),
     queryFn: async () => {
       try {
@@ -81,42 +148,13 @@ export function TeamReports() {
     enabled: !!id,
   });
 
-  // ✅ Мутация для создания отчета
-  const createReportMutation = useMutation({
-    mutationFn: async (reportData: { title: string; content: string }) => {
-      const response = await api.post(`/api/teams/${id}/reports`, reportData);
-      return response.data;
-    },
-    onSuccess: () => {
-      invalidateTeamQueries({ queryClient }, id);
-      notifications.show({
-        title: 'Успех',
-        message: 'Отчет создан',
-        color: 'teal',
-      });
-      setCreateModalOpened(false);
-      setNewReport({ title: '', content: '' });
-    },
-    onError: (error: any) => {
-      notifications.show({
-        title: 'Ошибка',
-        message: error?.response?.data?.detail || 'Не удалось создать отчет',
-        color: 'red',
-      });
-    },
-  });
-
   // Мутация для обновления отчета
   const updateReportMutation = useMutation({
-    mutationFn: async (reportData: { reportId: number; title: string; content: string }) => {
-      const response = await api.put(`/api/teams/${id}/reports/${reportData.reportId}`, {
-        title: reportData.title,
-        content: reportData.content,
-      });
-      return response.data;
+    mutationFn: async (data: { reportId: number; reportData: typeof editForm }) => {
+      return competitionsApi.updateCompetitionReport(data.reportId, data.reportData);
     },
     onSuccess: () => {
-      invalidateTeamQueries({ queryClient }, id);
+      queryClient.invalidateQueries({ queryKey: queryKeys.teams.reports(id!) });
       notifications.show({
         title: 'Успех',
         message: 'Отчет обновлен',
@@ -124,7 +162,6 @@ export function TeamReports() {
       });
       setEditModalOpened(false);
       setSelectedReport(null);
-      setEditReport({ title: '', content: '' });
     },
     onError: (error: any) => {
       notifications.show({
@@ -138,11 +175,10 @@ export function TeamReports() {
   // Мутация для удаления отчета
   const deleteReportMutation = useMutation({
     mutationFn: async (reportId: number) => {
-      const response = await api.delete(`/api/teams/${id}/reports/${reportId}`);
-      return response.data;
+      return competitionsApi.deleteCompetitionReport(reportId);
     },
     onSuccess: () => {
-      invalidateTeamQueries({ queryClient }, id);
+      queryClient.invalidateQueries({ queryKey: queryKeys.teams.reports(id!) });
       notifications.show({
         title: 'Успех',
         message: 'Отчет удален',
@@ -160,7 +196,7 @@ export function TeamReports() {
     },
   });
 
-  // ✅ Функция для возврата назад
+  // Функция для возврата назад
   const handleBack = () => {
     if (fromProfile) {
       navigate('/profile?tab=my-team');
@@ -169,34 +205,39 @@ export function TeamReports() {
     }
   };
 
-  // ✅ Функция создания отчета
-  const handleCreateReport = () => {
-    if (!newReport.title.trim()) {
-      notifications.show({
-        title: 'Ошибка',
-        message: 'Введите заголовок отчета',
-        color: 'red',
-      });
-      return;
-    }
-    
-    if (!newReport.content.trim()) {
-      notifications.show({
-        title: 'Ошибка',
-        message: 'Введите содержание отчета',
-        color: 'red',
-      });
-      return;
-    }
-    
-    createReportMutation.mutate(newReport);
+  // Открыть модальное окно редактирования
+  const openEditModal = (report: CompetitionReport) => {
+    setSelectedReport(report);
+    setEditForm({
+      result: report.result || '',
+      git_link: report.git_link || '',
+      project_url: report.project_url || '',
+      presentation_url: report.presentation_url || '',
+      brief_summary: report.brief_summary || '',
+      technologies_used: report.technologies_used || '',
+      individual_contributions: report.individual_contributions || '',
+      team_evaluation: report.team_evaluation || '',
+      problems_faced: report.problems_faced || '',
+      screenshot_url: report.screenshot_url || '',
+    });
+    setEditModalOpened(true);
+  };
+
+  // Открыть модальное окно удаления
+  const openDeleteModal = (report: CompetitionReport) => {
+    setSelectedReport(report);
+    setDeleteModalOpened(true);
+  };
+
+  // Проверка прав на редактирование (любой член команды)
+  const canEditReport = () => {
+    return isTeamMember;
   };
 
   return (
     <Container size="xl" py="xl">
       <Stack gap="xl">
         <div>
-          {/* ✅ Кнопка "Назад" с правильным текстом */}
           <VTBButton
             variant="secondary"
             leftSection={<IconArrowLeft size={18} />}
@@ -205,27 +246,24 @@ export function TeamReports() {
           >
             {fromProfile ? 'Назад в профиль' : 'Назад к команде'}
           </VTBButton>
-          
+
           <Group justify="space-between" align="flex-start">
             <div>
               <Title order={1} className="vtb-heading-hero">
                 <span className="vtb-gradient-text">Отчеты команды</span>
               </Title>
               <Text size="lg" c="dimmed" mt="md">
-                {fromProfile 
-                  ? 'Создание и управление отчетами вашей команды' 
-                  : 'Просмотр отчетов команды'}
-                {canAddReports && ' (режим капитана)'}
+                Отчеты по соревнованиям команды {team?.name || ''}
               </Text>
             </div>
-            
-            {/* ✅ Кнопка добавления отчета (только для капитана из профиля) */}
-            {canAddReports && (
+
+            {/* Кнопка подачи нового отчета (любой член команды) */}
+            {isTeamMember && (
               <VTBButton
-                leftSection={<IconPlus size={18} />}
-                onClick={() => setCreateModalOpened(true)}
+                leftSection={<IconFileText size={18} />}
+                onClick={() => navigate('/competitions/submit-report')}
               >
-                Создать отчет
+                Подать новый отчет
               </VTBButton>
             )}
           </Group>
@@ -238,212 +276,315 @@ export function TeamReports() {
         ) : reports.length === 0 ? (
           <VTBCard variant="accent">
             <Stack align="center" gap="xl" py="xl">
-              <IconFileText size={80} color="var(--vtb-cyan)" opacity={0.5} />
+              <IconTrophy size={80} color="var(--vtb-cyan)" opacity={0.5} />
               <div>
                 <Title order={3} c="white" ta="center" mb="xs">
-                  {canAddReports ? 'Создайте первый отчет' : 'Отчетов пока нет'}
+                  Отчетов пока нет
                 </Title>
                 <Text c="dimmed" ta="center">
-                  {canAddReports 
-                    ? 'Начните вести историю достижений вашей команды' 
-                    : 'Здесь будут отображаться отчеты команды'}
+                  {isTeamMember
+                    ? 'После завершения соревнования вы можете подать отчет о результатах'
+                    : 'Здесь будут отображаться отчеты команды по соревнованиям'}
                 </Text>
               </div>
-              {canAddReports && (
+              {isTeamMember && (
                 <VTBButton
-                  leftSection={<IconPlus size={18} />}
-                  onClick={() => setCreateModalOpened(true)}
+                  leftSection={<IconFileText size={18} />}
+                  onClick={() => navigate('/competitions/submit-report')}
                 >
-                  Создать отчет
+                  Подать отчет
                 </VTBButton>
               )}
             </Stack>
           </VTBCard>
         ) : (
-          <Grid gutter="lg">
+          <Stack gap="md">
             {reports.map((report) => (
-              <Grid.Col key={report.id} span={{ base: 12 }}>
-                <VTBCard variant="primary">
-                  <Stack gap="md">
-                    <Group justify="space-between" align="flex-start">
-                      <div style={{ flex: 1 }}>
-                        <Group gap="xs" mb="xs">
-                          <IconFileText size={24} color="var(--vtb-cyan)" />
-                          <Title order={4} c="white">
-                            {report.title}
-                          </Title>
-                        </Group>
-                        {report.author_name && (
-                          <Text size="sm" c="dimmed">
-                            Автор: {report.author_name}
-                          </Text>
-                        )}
-                      </div>
-                      <Badge
-                        variant="light"
-                        color="cyan"
-                        leftSection={<IconCalendar size={14} />}
-                        style={{
-                          background: 'rgba(0, 217, 255, 0.2)',
-                          color: 'var(--vtb-cyan)',
-                          border: '1px solid var(--vtb-cyan)',
-                        }}
-                      >
-                        {dayjs(report.created_at).format('DD.MM.YYYY')}
-                      </Badge>
+              <VTBCard key={report.id} variant="primary">
+                <Stack gap="md">
+                  <Group justify="space-between" align="flex-start">
+                    <div>
+                      <Text size="xl" fw={700} c="white">
+                        {report.competition_name}
+                      </Text>
+                      <Text size="xs" c="dimmed">
+                        Отправлено: {new Date(report.submitted_at).toLocaleDateString('ru-RU', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </Text>
+                    </div>
+                    <Group gap="xs">
+                      {report.result && (
+                        <Badge
+                          size="lg"
+                          color={RESULT_COLORS[report.result] || 'gray'}
+                          variant="filled"
+                        >
+                          {RESULT_LABELS[report.result] || report.result}
+                        </Badge>
+                      )}
+                      {canEditReport() && (
+                        <>
+                          <VTBButton
+                            variant="secondary"
+                            size="xs"
+                            leftSection={<IconEdit size={16} />}
+                            onClick={() => openEditModal(report)}
+                          >
+                            Изменить
+                          </VTBButton>
+                          <VTBButton
+                            variant="secondary"
+                            size="xs"
+                            leftSection={<IconTrash size={16} />}
+                            onClick={() => openDeleteModal(report)}
+                            style={{ borderColor: 'var(--mantine-color-red-6)' }}
+                          >
+                            Удалить
+                          </VTBButton>
+                        </>
+                      )}
                     </Group>
+                  </Group>
 
-                    <Text c="dimmed" size="sm" style={{ whiteSpace: 'pre-wrap' }}>
-                      {report.content}
-                    </Text>
-                    
-                    {/* Показываем кнопки управления только капитану из профиля */}
-                    {canAddReports && (
-                      <Group justify="flex-end" mt="md">
-                        <Button
-                          variant="light"
-                          size="xs"
-                          color="blue"
-                          onClick={() => {
-                            setSelectedReport(report);
-                            setEditReport({ title: report.title, content: report.content });
-                            setEditModalOpened(true);
-                          }}
-                        >
-                          Редактировать
-                        </Button>
-                        <Button
-                          variant="light"
-                          size="xs"
-                          color="red"
-                          onClick={() => {
-                            setSelectedReport(report);
-                            setDeleteModalOpened(true);
-                          }}
-                        >
-                          Удалить
-                        </Button>
-                      </Group>
+                  <Text c="white" style={{ whiteSpace: 'pre-wrap' }}>
+                    {report.brief_summary}
+                  </Text>
+
+                  {/* Скриншот */}
+                  {report.screenshot_url && (
+                    <div>
+                      <Text size="sm" fw={600} c="white" mb={8}>
+                        <IconPhoto size={16} style={{ marginRight: 4, verticalAlign: 'middle' }} />
+                        Скриншот результата:
+                      </Text>
+                      <Image
+                        src={report.screenshot_url}
+                        alt="Скриншот результата"
+                        radius="md"
+                        maw={600}
+                        style={{ border: '1px solid var(--vtb-cyan)', borderRadius: 8 }}
+                      />
+                    </div>
+                  )}
+
+                  <Group gap="md">
+                    {report.git_link && (
+                      <Anchor
+                        href={report.git_link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        c="cyan"
+                        style={{ display: 'flex', alignItems: 'center', gap: 4 }}
+                      >
+                        <IconBrandGithub size={18} />
+                        Репозиторий
+                      </Anchor>
                     )}
-                  </Stack>
-                </VTBCard>
-              </Grid.Col>
+
+                    {report.project_url && (
+                      <Anchor
+                        href={report.project_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        c="cyan"
+                        style={{ display: 'flex', alignItems: 'center', gap: 4 }}
+                      >
+                        <IconExternalLink size={18} />
+                        Проект
+                      </Anchor>
+                    )}
+
+                    {report.presentation_url && (
+                      <Anchor
+                        href={report.presentation_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        c="cyan"
+                        style={{ display: 'flex', alignItems: 'center', gap: 4 }}
+                      >
+                        <IconFileText size={18} />
+                        Презентация
+                      </Anchor>
+                    )}
+                  </Group>
+
+                  {report.technologies_used && (
+                    <div>
+                      <Text size="sm" fw={600} c="white" mb={4}>
+                        Использованные технологии:
+                      </Text>
+                      <Text size="sm" c="dimmed">
+                        {report.technologies_used}
+                      </Text>
+                    </div>
+                  )}
+
+                  {report.individual_contributions && (
+                    <div>
+                      <Text size="sm" fw={600} c="white" mb={4}>
+                        Вклад участников:
+                      </Text>
+                      <Text size="sm" c="dimmed" style={{ whiteSpace: 'pre-wrap' }}>
+                        {report.individual_contributions}
+                      </Text>
+                    </div>
+                  )}
+
+                  {report.team_evaluation && (
+                    <div>
+                      <Text size="sm" fw={600} c="white" mb={4}>
+                        Оценка работы команды:
+                      </Text>
+                      <Text size="sm" c="dimmed" style={{ whiteSpace: 'pre-wrap' }}>
+                        {report.team_evaluation}
+                      </Text>
+                    </div>
+                  )}
+
+                  {report.problems_faced && (
+                    <div>
+                      <Text size="sm" fw={600} c="white" mb={4}>
+                        Проблемы и сложности:
+                      </Text>
+                      <Text size="sm" c="dimmed" style={{ whiteSpace: 'pre-wrap' }}>
+                        {report.problems_faced}
+                      </Text>
+                    </div>
+                  )}
+                </Stack>
+              </VTBCard>
             ))}
-          </Grid>
+          </Stack>
         )}
       </Stack>
 
-      {/* ✅ Модальное окно создания отчета */}
-      <Modal
-        opened={createModalOpened}
-        onClose={() => setCreateModalOpened(false)}
-        title="Создание отчета"
-        size="lg"
-        centered
-      >
-        <Stack gap="md">
-          <TextInput
-            label="Заголовок отчета"
-            placeholder="Введите заголовок"
-            value={newReport.title}
-            onChange={(e) => setNewReport({...newReport, title: e.target.value})}
-            required
-            size="md"
-          />
-          
-          <Textarea
-            label="Содержание отчета"
-            placeholder="Опишите достижения команды, результаты соревнований, планы на будущее..."
-            value={newReport.content}
-            onChange={(e) => setNewReport({...newReport, content: e.target.value})}
-            minRows={6}
-            required
-            size="md"
-          />
-          
-          <Group justify="flex-end" mt="md">
-            <Button
-              variant="light"
-              color="gray"
-              onClick={() => setCreateModalOpened(false)}
-            >
-              Отмена
-            </Button>
-            <VTBButton
-              leftSection={<IconFileText size={18} />}
-              onClick={handleCreateReport}
-              loading={createReportMutation.isPending}
-            >
-              Создать отчет
-            </VTBButton>
-          </Group>
-        </Stack>
-      </Modal>
-
-      {/* Модальное окно редактирования отчета */}
+      {/* Модальное окно редактирования */}
       <Modal
         opened={editModalOpened}
         onClose={() => {
           setEditModalOpened(false);
           setSelectedReport(null);
-          setEditReport({ title: '', content: '' });
         }}
-        title="Редактирование отчета"
-        size="lg"
+        title={`Редактирование отчета: ${selectedReport?.competition_name || ''}`}
+        size="xl"
         centered
       >
         <Stack gap="md">
-          <TextInput
-            label="Заголовок отчета"
-            placeholder="Введите заголовок"
-            value={editReport.title}
-            onChange={(e) => setEditReport({...editReport, title: e.target.value})}
-            required
-            size="md"
+          <ConsoleLabel path="C:\Report\result" label="Результат">
+            <Select
+              data={RESULT_OPTIONS}
+              value={editForm.result}
+              onChange={(value) => setEditForm({ ...editForm, result: value || '' })}
+              classNames={{ input: 'glass-input' }}
+            />
+          </ConsoleLabel>
+
+          <ConsoleInput
+            label="Ссылка на GitHub"
+            consolePath="C:\Report\github"
+            value={editForm.git_link}
+            onChange={(e) => setEditForm({ ...editForm, git_link: e.target.value })}
           />
 
-          <Textarea
-            label="Содержание отчета"
-            placeholder="Опишите достижения команды, результаты соревнований, планы на будущее..."
-            value={editReport.content}
-            onChange={(e) => setEditReport({...editReport, content: e.target.value})}
-            minRows={6}
-            required
-            size="md"
+          <ConsoleInput
+            label="Ссылка на проект"
+            consolePath="C:\Report\project"
+            value={editForm.project_url}
+            onChange={(e) => setEditForm({ ...editForm, project_url: e.target.value })}
           />
+
+          <ConsoleInput
+            label="Ссылка на презентацию"
+            consolePath="C:\Report\presentation"
+            value={editForm.presentation_url}
+            onChange={(e) => setEditForm({ ...editForm, presentation_url: e.target.value })}
+          />
+
+          <ConsoleInput
+            label="Ссылка на скриншот"
+            consolePath="C:\Report\screenshot"
+            value={editForm.screenshot_url}
+            onChange={(e) => setEditForm({ ...editForm, screenshot_url: e.target.value })}
+          />
+
+          <ConsoleLabel path="C:\Report\summary" label="Описание">
+            <Textarea
+              value={editForm.brief_summary}
+              onChange={(e) => setEditForm({ ...editForm, brief_summary: e.target.value })}
+              minRows={4}
+              classNames={{ input: 'glass-input' }}
+            />
+          </ConsoleLabel>
+
+          <ConsoleLabel path="C:\Report\technologies" label="Технологии">
+            <Textarea
+              value={editForm.technologies_used}
+              onChange={(e) => setEditForm({ ...editForm, technologies_used: e.target.value })}
+              minRows={2}
+              classNames={{ input: 'glass-input' }}
+            />
+          </ConsoleLabel>
+
+          <ConsoleLabel path="C:\Report\contributions" label="Вклад участников">
+            <Textarea
+              value={editForm.individual_contributions}
+              onChange={(e) => setEditForm({ ...editForm, individual_contributions: e.target.value })}
+              minRows={2}
+              classNames={{ input: 'glass-input' }}
+            />
+          </ConsoleLabel>
+
+          <ConsoleLabel path="C:\Report\evaluation" label="Оценка работы команды">
+            <Textarea
+              value={editForm.team_evaluation}
+              onChange={(e) => setEditForm({ ...editForm, team_evaluation: e.target.value })}
+              minRows={2}
+              classNames={{ input: 'glass-input' }}
+            />
+          </ConsoleLabel>
+
+          <ConsoleLabel path="C:\Report\problems" label="Проблемы и сложности">
+            <Textarea
+              value={editForm.problems_faced}
+              onChange={(e) => setEditForm({ ...editForm, problems_faced: e.target.value })}
+              minRows={2}
+              classNames={{ input: 'glass-input' }}
+            />
+          </ConsoleLabel>
 
           <Group justify="flex-end" mt="md">
-            <Button
-              variant="light"
-              color="gray"
+            <VTBButton
+              variant="secondary"
               onClick={() => {
                 setEditModalOpened(false);
                 setSelectedReport(null);
-                setEditReport({ title: '', content: '' });
               }}
             >
               Отмена
-            </Button>
+            </VTBButton>
             <VTBButton
-              leftSection={<IconFileText size={18} />}
               onClick={() => {
                 if (selectedReport) {
                   updateReportMutation.mutate({
                     reportId: selectedReport.id,
-                    title: editReport.title,
-                    content: editReport.content,
+                    reportData: editForm,
                   });
                 }
               }}
               loading={updateReportMutation.isPending}
             >
-              Сохранить изменения
+              Сохранить
             </VTBButton>
           </Group>
         </Stack>
       </Modal>
 
-      {/* Модальное окно подтверждения удаления */}
+      {/* Модальное окно удаления */}
       <Modal
         opened={deleteModalOpened}
         onClose={() => {
@@ -451,26 +592,26 @@ export function TeamReports() {
           setSelectedReport(null);
         }}
         title="Удаление отчета"
-        size="sm"
+        size="md"
         centered
       >
         <Stack gap="md">
           <Text c="dimmed">
-            Вы уверены, что хотите удалить отчет "{selectedReport?.title}"? Это действие нельзя отменить.
+            Вы уверены, что хотите удалить отчет по соревнованию "{selectedReport?.competition_name}"?
+            Это действие нельзя отменить.
           </Text>
 
           <Group justify="flex-end" mt="md">
-            <Button
-              variant="light"
-              color="gray"
+            <VTBButton
+              variant="secondary"
               onClick={() => {
                 setDeleteModalOpened(false);
                 setSelectedReport(null);
               }}
             >
               Отмена
-            </Button>
-            <Button
+            </VTBButton>
+            <VTBButton
               color="red"
               onClick={() => {
                 if (selectedReport) {
@@ -480,7 +621,7 @@ export function TeamReports() {
               loading={deleteReportMutation.isPending}
             >
               Удалить
-            </Button>
+            </VTBButton>
           </Group>
         </Stack>
       </Modal>

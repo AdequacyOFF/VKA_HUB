@@ -23,8 +23,8 @@ class TeamReportRepository(ABC):
         pass
     
     @abstractmethod
-    async def update(self, team_report: TeamReport) -> TeamReport:
-        """Update team report"""
+    async def update(self, report_id: int, update_data: dict) -> Optional[TeamReport]:
+        """Update team report by ID with update data dict"""
         pass
     
     @abstractmethod

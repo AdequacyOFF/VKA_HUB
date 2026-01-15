@@ -152,17 +152,27 @@ export function CompetitionDetail() {
   };
 
   const competitionStatus = getCompetitionStatus();
-  const isParticipant = competition.participants?.some((p: any) => p.user_id === user?.id);
   const canRegister = competitionStatus === 'upcoming' || competitionStatus === 'ongoing';
   const isRegistrationOpen = competition.registration_deadline
     ? dayjs().isBefore(dayjs(competition.registration_deadline))
     : true;
 
-  // Check if competition has ended and user is team captain who needs to submit report
+  // Check if competition has ended
   const competitionEnded = dayjs().isAfter(dayjs(competition.end_date));
-  const userRegistration = competition.registrations?.find((reg: any) => reg.team?.captain_id === user?.id);
-  const isTeamCaptain = !!userRegistration;
-  const hasSubmittedReport = userRegistration?.has_report || false;
+
+  // Find if user is a member of any registered team (captain or regular member)
+  // Use registrationsData which has full member information
+  const userTeamRegistration = registrationsData?.registrations?.find((reg: any) => {
+    // Check if user is captain
+    if (reg.captain?.id === user?.id) return true;
+    // Check if user is in members list
+    if (reg.members?.some((member: any) => member.user_id === user?.id)) return true;
+    return false;
+  });
+
+  const isTeamMember = !!userTeamRegistration;
+  const isParticipant = isTeamMember; // User is participant if they are a team member
+  const hasSubmittedReport = userTeamRegistration?.has_report || false;
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -411,29 +421,29 @@ export function CompetitionDetail() {
                       </Text>
                     </Group>
 
-                    {/* Submit report button for team captains after competition ends */}
-                    {competitionEnded && isTeamCaptain && !hasSubmittedReport && (
+                    {/* Submit report button for team members */}
+                    {isTeamMember && !hasSubmittedReport && (
                       <Group
                         p="md"
                         style={{
-                          background: 'rgba(251, 191, 36, 0.1)',
-                          border: '1px solid #fbbf24',
+                          background: 'rgba(0, 217, 255, 0.1)',
+                          border: '1px solid var(--vtb-cyan)',
                           borderRadius: 12,
                         }}
                       >
                         <Stack gap="sm" style={{ flex: 1 }}>
                           <Group>
-                            <IconAlertCircle size={20} color="#fbbf24" />
-                            <Text size="sm" c="#fbbf24" fw={600}>
-                              Необходимо подать отчет о соревновании
+                            <IconFileDescription size={20} color="var(--vtb-cyan)" />
+                            <Text size="sm" c="var(--vtb-cyan)" fw={600}>
+                              Подать отчет о соревновании
                             </Text>
                           </Group>
                           <Text size="xs" c="dimmed">
-                            У вас есть 5 дней после окончания соревнования для подачи отчета. После истечения срока доступ к функциям платформы будет ограничен.
+                            Любой участник команды может подать отчет о результатах соревнования.
                           </Text>
                           <VTBButton
                             leftSection={<IconFileDescription size={18} />}
-                            onClick={() => navigate(`/competitions/${competition.id}/registrations/${userRegistration.id}/report`)}
+                            onClick={() => navigate(`/competitions/${competition.id}/registrations/${userTeamRegistration.id}/report`)}
                             variant="secondary"
                           >
                             Подать отчет
@@ -442,7 +452,7 @@ export function CompetitionDetail() {
                       </Group>
                     )}
 
-                    {competitionEnded && isTeamCaptain && hasSubmittedReport && (
+                    {isTeamMember && hasSubmittedReport && (
                       <Group
                         p="md"
                         style={{

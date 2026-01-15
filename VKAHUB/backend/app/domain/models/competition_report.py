@@ -39,6 +39,7 @@ class CompetitionReport(Base):
     individual_contributions = Column(Text)
     team_evaluation = Column(Text)
     problems_faced = Column(Text)
+    screenshot_url = Column(Text, nullable=True)  # Screenshot of the competition result
     attachments = Column(JSON)  # List of file URLs (certificates, screenshots, archives)
 
     submitted_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
