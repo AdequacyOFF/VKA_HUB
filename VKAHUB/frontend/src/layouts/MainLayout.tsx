@@ -19,17 +19,17 @@ export function MainLayout() {
   const navItems = (
     <>
       <Link to="/users" style={{ textDecoration: 'none' }} onClick={close}>
-        <Button variant="subtle" radius="lg" fullWidth={isMobile}>
+        <Button variant="subtle" radius={0} fullWidth={isMobile}>
           Пользователи
         </Button>
       </Link>
       <Link to="/teams" style={{ textDecoration: 'none' }} onClick={close}>
-        <Button variant="subtle" radius="lg" fullWidth={isMobile}>
+        <Button variant="subtle" radius={0} fullWidth={isMobile}>
           Команды
         </Button>
       </Link>
       <Link to="/competitions" style={{ textDecoration: 'none' }} onClick={close}>
-        <Button variant="subtle" radius="lg" fullWidth={isMobile}>
+        <Button variant="subtle" radius={0} fullWidth={isMobile}>
           Соревнования
         </Button>
       </Link>
@@ -38,7 +38,7 @@ export function MainLayout() {
         <Link to="/platform-complaints/create" style={{ textDecoration: 'none' }} onClick={close}>
           <Button
             variant="subtle"
-            radius="lg"
+            radius={0}
             leftSection={<IconMessageReport size={18} />}
             fullWidth={isMobile}
           >
@@ -51,7 +51,7 @@ export function MainLayout() {
         <Link to="/moderator" style={{ textDecoration: 'none' }} onClick={close}>
           <Button
             variant="light"
-            radius="lg"
+            radius={0}
             leftSection={<IconShieldCheck size={18} />}
             style={{
               color: '#00d9ff',
@@ -72,7 +72,7 @@ export function MainLayout() {
       {isAuthenticated ? (
         <>
           <Link to="/profile" style={{ textDecoration: 'none' }} onClick={close}>
-            <Button variant="light" radius="lg" fullWidth={isMobile}>
+            <Button variant="light" radius={0} fullWidth={isMobile}>
               Профиль
             </Button>
           </Link>
@@ -83,7 +83,7 @@ export function MainLayout() {
             }}
             variant="gradient"
             gradient={{ from: 'cyan', to: 'blue' }}
-            radius="lg"
+            radius={0}
             fullWidth={isMobile}
           >
             Выйти
@@ -94,7 +94,7 @@ export function MainLayout() {
           <Button
             variant="gradient"
             gradient={{ from: 'cyan', to: 'blue' }}
-            radius="lg"
+            radius={0}
             fullWidth={isMobile}
           >
             Войти

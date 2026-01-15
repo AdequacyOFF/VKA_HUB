@@ -104,7 +104,7 @@ export function ModeratorLayout() {
               active={location.pathname === item.path}
               styles={{
                 root: {
-                  borderRadius: 8,
+                  borderRadius: 0,
                   color: '#ffffff',
                   '&[data-active]': {
                     background: 'linear-gradient(135deg, var(--vtb-cyan) 0%, var(--vtb-cyan-light) 100%)',
@@ -128,7 +128,7 @@ export function ModeratorLayout() {
             to='/'
             styles={{
               root: {
-                borderRadius: 8,
+                borderRadius: 0,
                 marginTop: 'auto',
                 color: '#16a130ff',
                 '&:hover': {
@@ -146,7 +146,7 @@ export function ModeratorLayout() {
             onClick={handleLogout}
             styles={{
               root: {
-                borderRadius: 8,
+                borderRadius: 0,
                 marginTop: 'auto',
                 color: '#ef4444',
                 '&:hover': {

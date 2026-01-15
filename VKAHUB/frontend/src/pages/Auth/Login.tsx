@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Title, TextInput, PasswordInput, Stack, Text, Container, Box, Anchor, Group } from '@mantine/core';
+import { Title, Stack, Text, Container, Box, Anchor, Group } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
-import { IconLogin, IconUser, IconLock } from '@tabler/icons-react';
+import { IconLogin } from '@tabler/icons-react';
 import { VTBCard } from '../../components/common/VTBCard';
 import { VTBButton } from '../../components/common/VTBButton';
+import { ConsoleInput } from '../../components/common/ConsoleInput';
+import { ConsolePasswordInput } from '../../components/common/ConsolePasswordInput';
 import { authApi } from '../../api';
 import { useAuthStore } from '../../store/authStore';
 import { getErrorMessage } from '../../utils/errorHandler';
@@ -74,27 +76,19 @@ export function Login() {
           <VTBCard variant="primary" style={{ width: '100%', maxWidth: 500 }}>
             <form onSubmit={form.onSubmit(handleSubmit)}>
               <Stack gap="lg">
-                <TextInput
+                <ConsoleInput
                   label="Логин"
                   placeholder="Введите логин"
-                  leftSection={<IconUser size={18} />}
+                  consolePath="C:\User\login"
                   size="md"
-                  classNames={{ input: 'glass-input' }}
-                  styles={{
-                    label: { color: '#ffffff', fontWeight: 600, marginBottom: 8 },
-                  }}
                   {...form.getInputProps('login')}
                 />
 
-                <PasswordInput
+                <ConsolePasswordInput
                   label="Пароль"
                   placeholder="Введите пароль"
-                  leftSection={<IconLock size={18} />}
+                  consolePath="C:\User\password"
                   size="md"
-                  classNames={{ input: 'glass-input' }}
-                  styles={{
-                    label: { color: '#ffffff', fontWeight: 600, marginBottom: 8 },
-                  }}
                   {...form.getInputProps('password')}
                 />
 

@@ -11,7 +11,7 @@ export const NotificationTheme = Notification.extend({
       backdropFilter: 'blur(20px)',
       WebkitBackdropFilter: 'blur(20px)',
       border: '1px solid rgba(0, 217, 255, 0.3)',
-      borderRadius: '12px',
+      borderRadius: '0px',
       boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
     },
     title: {
@@ -44,7 +44,7 @@ export const AlertTheme = Alert.extend({
       backdropFilter: 'blur(10px)',
       WebkitBackdropFilter: 'blur(10px)',
       border: '1px solid rgba(0, 217, 255, 0.3)',
-      borderRadius: '12px',
+      borderRadius: '0px',
     },
     title: {
       color: '#ffffff',

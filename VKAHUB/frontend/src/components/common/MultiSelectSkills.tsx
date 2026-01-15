@@ -64,9 +64,10 @@ const AVAILABLE_SKILLS = [
 
 interface MultiSelectSkillsProps extends Omit<MultiSelectProps, 'data'> {
   customSkills?: { value: string; label: string; group?: string }[];
+  consolePath?: string;
 }
 
-export function MultiSelectSkills({ customSkills = [], ...props }: MultiSelectSkillsProps) {
+export function MultiSelectSkills({ customSkills = [], consolePath = 'C:\\User\\skills', label, ...props }: MultiSelectSkillsProps) {
   // Group skills by category for Mantine v7
   const groupedSkills = () => {
     const allSkills = [...AVAILABLE_SKILLS, ...customSkills];
@@ -87,20 +88,59 @@ export function MultiSelectSkills({ customSkills = [], ...props }: MultiSelectSk
   };
 
   return (
-    <MultiSelect
-      data={groupedSkills()}
-      placeholder="Выберите навыки"
-      maxDropdownHeight={400}
-      styles={{
-        groupLabel: {
+    <div>
+      {label && (
+        <div style={{ marginBottom: 4 }}>
+          <span
+            style={{
+              color: '#ffffff',
+              fontWeight: 600,
+              fontSize: '14px',
+            }}
+          >
+            {label}
+          </span>
+        </div>
+      )}
+      <div
+        style={{
           color: 'var(--vtb-cyan)',
-          fontWeight: 600,
-          fontSize: '0.75rem',
-          textTransform: 'uppercase',
-          letterSpacing: '0.5px',
-        },
-      }}
-      {...props}
-    />
+          fontFamily: "'Courier New', 'Consolas', monospace",
+          fontSize: '13px',
+          fontWeight: 'bold',
+          marginBottom: '4px',
+          userSelect: 'none',
+        }}
+      >
+        {consolePath} &gt;
+      </div>
+      <MultiSelect
+        data={groupedSkills()}
+        placeholder="Выберите навыки"
+        maxDropdownHeight={400}
+        {...props}
+        classNames={{
+          ...props.classNames,
+          input: `glass-input ${props.classNames?.input || ''}`,
+        }}
+        styles={{
+          groupLabel: {
+            color: 'var(--vtb-cyan)',
+            fontWeight: 600,
+            fontSize: '0.75rem',
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px',
+          },
+          ...props.styles,
+          input: {
+            ...props.styles?.input,
+          },
+          label: {
+            display: 'none',
+            ...props.styles?.label,
+          },
+        }}
+      />
+    </div>
   );
 }

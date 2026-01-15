@@ -3,9 +3,6 @@ import {
   Container,
   Paper,
   Title,
-  TextInput,
-  Textarea,
-  Select,
   Button,
   Group,
   Stack,
@@ -17,16 +14,19 @@ import {
   Grid,
   Card,
   Badge,
-  MultiSelect,
 } from '@mantine/core';
 import { DateInput, DateTimePicker } from '@mantine/dates';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
-import { IconTrash, IconPlus, IconUpload } from '@tabler/icons-react';
+import { IconTrash, IconPlus } from '@tabler/icons-react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { competitionsApi } from '../../api/competitions';
 import { VTBCard } from '../../components/common/VTBCard';
+import { ConsoleInput } from '../../components/common/ConsoleInput';
+import { ConsoleTextarea } from '../../components/common/ConsoleTextarea';
+import { ConsoleSelect } from '../../components/common/ConsoleSelect';
+import { ConsoleMultiSelect } from '../../components/common/ConsoleMultiSelect';
 import { invalidateCompetitionQueries } from '../../utils/cacheInvalidation';
 
 interface Stage {
@@ -238,9 +238,10 @@ export default function CreateCompetition() {
 
               <Grid>
                 <Grid.Col span={6}>
-                  <Select
+                  <ConsoleSelect
                     label="Тип соревнования"
                     placeholder="Выберите тип"
+                    consolePath="C:\Competition\type"
                     required
                     data={[
                       { value: 'hackathon', label: 'Хакатон' },
@@ -252,9 +253,10 @@ export default function CreateCompetition() {
                 </Grid.Col>
 
                 <Grid.Col span={6}>
-                  <TextInput
+                  <ConsoleInput
                     label="Название соревнования"
                     placeholder="Введите название"
+                    consolePath="C:\Competition\name"
                     required
                     {...form.getInputProps('name')}
                   />
@@ -262,9 +264,10 @@ export default function CreateCompetition() {
 
                 {form.values.type === 'other' && (
                   <Grid.Col span={12}>
-                    <TextInput
+                    <ConsoleInput
                       label="Описание типа"
                       placeholder="Опишите тип соревнования"
+                      consolePath="C:\Competition\type_desc"
                       required
                       {...form.getInputProps('other_type_description')}
                     />
@@ -272,41 +275,61 @@ export default function CreateCompetition() {
                 )}
 
                 <Grid.Col span={12}>
-                  <Textarea
+                  <ConsoleTextarea
                     label="Описание"
                     placeholder="Введите описание соревнования"
+                    consolePath="C:\Competition\description"
                     minRows={4}
                     {...form.getInputProps('description')}
                   />
                 </Grid.Col>
 
                 <Grid.Col span={12}>
-                  <TextInput
+                  <ConsoleInput
                     label="Организатор"
                     placeholder="напр., ПАО «ВТБ», ВКА имени А.Ф.Можайского"
+                    consolePath="C:\Competition\organizer"
                     required
                     {...form.getInputProps('organizer')}
                   />
                 </Grid.Col>
 
                 <Grid.Col span={6}>
-                  <TextInput
+                  <ConsoleInput
                     label="Ссылка (опционально)"
                     placeholder="https://..."
+                    consolePath="C:\Competition\link"
                     {...form.getInputProps('link')}
                   />
                 </Grid.Col>
 
                 <Grid.Col span={6}>
-                  <FileInput
-                    label="Изображение соревнования (опционально)"
-                    placeholder="Выберите файл"
-                    accept="image/*"
-                    leftSection={<IconUpload size={16} />}
-                    value={imageFile}
-                    onChange={setImageFile}
-                    clearable
-                  />
+                  <div>
+                    <div style={{ marginBottom: 4 }}>
+                      <span style={{ color: '#ffffff', fontWeight: 600, fontSize: '14px' }}>
+                        Изображение соревнования (опционально)
+                      </span>
+                    </div>
+                    <div style={{
+                      color: 'var(--vtb-cyan)',
+                      fontFamily: "'Courier New', 'Consolas', monospace",
+                      fontSize: '13px',
+                      fontWeight: 'bold',
+                      marginBottom: '4px',
+                      userSelect: 'none',
+                    }}>
+                      C:\Competition\image &gt;
+                    </div>
+                    <FileInput
+                      placeholder="Выберите файл"
+                      accept="image/*"
+                      value={imageFile}
+                      onChange={setImageFile}
+                      clearable
+                      classNames={{ input: 'glass-input' }}
+                      styles={{ label: { display: 'none' } }}
+                    />
+                  </div>
                 </Grid.Col>
               </Grid>
             </Card>
@@ -319,33 +342,87 @@ export default function CreateCompetition() {
 
               <Grid>
                 <Grid.Col span={4}>
-                  <DateTimePicker
-                    label="Дата и время начала"
-                    placeholder="Выберите дату и время"
-                    required
-                    valueFormat="DD.MM.YYYY HH:mm"
-                    {...form.getInputProps('start_date')}
-                  />
+                  <div>
+                    <div style={{ marginBottom: 4 }}>
+                      <span style={{ color: '#ffffff', fontWeight: 600, fontSize: '14px' }}>
+                        Дата и время начала
+                      </span>
+                    </div>
+                    <div style={{
+                      color: 'var(--vtb-cyan)',
+                      fontFamily: "'Courier New', 'Consolas', monospace",
+                      fontSize: '13px',
+                      fontWeight: 'bold',
+                      marginBottom: '4px',
+                      userSelect: 'none',
+                    }}>
+                      C:\Competition\start_date &gt;
+                    </div>
+                    <DateTimePicker
+                      placeholder="Выберите дату и время"
+                      required
+                      valueFormat="DD.MM.YYYY HH:mm"
+                      classNames={{ input: 'glass-input' }}
+                      styles={{ label: { display: 'none' } }}
+                      {...form.getInputProps('start_date')}
+                    />
+                  </div>
                 </Grid.Col>
 
                 <Grid.Col span={4}>
-                  <DateTimePicker
-                    label="Дата и время окончания"
-                    placeholder="Выберите дату и время"
-                    required
-                    valueFormat="DD.MM.YYYY HH:mm"
-                    {...form.getInputProps('end_date')}
-                  />
+                  <div>
+                    <div style={{ marginBottom: 4 }}>
+                      <span style={{ color: '#ffffff', fontWeight: 600, fontSize: '14px' }}>
+                        Дата и время окончания
+                      </span>
+                    </div>
+                    <div style={{
+                      color: 'var(--vtb-cyan)',
+                      fontFamily: "'Courier New', 'Consolas', monospace",
+                      fontSize: '13px',
+                      fontWeight: 'bold',
+                      marginBottom: '4px',
+                      userSelect: 'none',
+                    }}>
+                      C:\Competition\end_date &gt;
+                    </div>
+                    <DateTimePicker
+                      placeholder="Выберите дату и время"
+                      required
+                      valueFormat="DD.MM.YYYY HH:mm"
+                      classNames={{ input: 'glass-input' }}
+                      styles={{ label: { display: 'none' } }}
+                      {...form.getInputProps('end_date')}
+                    />
+                  </div>
                 </Grid.Col>
 
                 <Grid.Col span={4}>
-                  <DateTimePicker
-                    label="Дедлайн регистрации"
-                    placeholder="Выберите дату и время"
-                    required
-                    valueFormat="DD.MM.YYYY HH:mm"
-                    {...form.getInputProps('registration_deadline')}
-                  />
+                  <div>
+                    <div style={{ marginBottom: 4 }}>
+                      <span style={{ color: '#ffffff', fontWeight: 600, fontSize: '14px' }}>
+                        Дедлайн регистрации
+                      </span>
+                    </div>
+                    <div style={{
+                      color: 'var(--vtb-cyan)',
+                      fontFamily: "'Courier New', 'Consolas', monospace",
+                      fontSize: '13px',
+                      fontWeight: 'bold',
+                      marginBottom: '4px',
+                      userSelect: 'none',
+                    }}>
+                      C:\Competition\reg_deadline &gt;
+                    </div>
+                    <DateTimePicker
+                      placeholder="Выберите дату и время"
+                      required
+                      valueFormat="DD.MM.YYYY HH:mm"
+                      classNames={{ input: 'glass-input' }}
+                      styles={{ label: { display: 'none' } }}
+                      {...form.getInputProps('registration_deadline')}
+                    />
+                  </div>
                 </Grid.Col>
               </Grid>
             </Card>
@@ -358,25 +435,61 @@ export default function CreateCompetition() {
 
               <Grid>
                 <Grid.Col span={6}>
-                  <NumberInput
-                    label="Мин. размер команды"
-                    placeholder="2"
-                    min={1}
-                    max={10}
-                    required
-                    {...form.getInputProps('min_team_size')}
-                  />
+                  <div>
+                    <div style={{ marginBottom: 4 }}>
+                      <span style={{ color: '#ffffff', fontWeight: 600, fontSize: '14px' }}>
+                        Мин. размер команды
+                      </span>
+                    </div>
+                    <div style={{
+                      color: 'var(--vtb-cyan)',
+                      fontFamily: "'Courier New', 'Consolas', monospace",
+                      fontSize: '13px',
+                      fontWeight: 'bold',
+                      marginBottom: '4px',
+                      userSelect: 'none',
+                    }}>
+                      C:\Competition\min_team_size &gt;
+                    </div>
+                    <NumberInput
+                      placeholder="2"
+                      min={1}
+                      max={10}
+                      required
+                      classNames={{ input: 'glass-input' }}
+                      styles={{ label: { display: 'none' } }}
+                      {...form.getInputProps('min_team_size')}
+                    />
+                  </div>
                 </Grid.Col>
 
                 <Grid.Col span={6}>
-                  <NumberInput
-                    label="Макс. размер команды"
-                    placeholder="5"
-                    min={1}
-                    max={10}
-                    required
-                    {...form.getInputProps('max_team_size')}
-                  />
+                  <div>
+                    <div style={{ marginBottom: 4 }}>
+                      <span style={{ color: '#ffffff', fontWeight: 600, fontSize: '14px' }}>
+                        Макс. размер команды
+                      </span>
+                    </div>
+                    <div style={{
+                      color: 'var(--vtb-cyan)',
+                      fontFamily: "'Courier New', 'Consolas', monospace",
+                      fontSize: '13px',
+                      fontWeight: 'bold',
+                      marginBottom: '4px',
+                      userSelect: 'none',
+                    }}>
+                      C:\Competition\max_team_size &gt;
+                    </div>
+                    <NumberInput
+                      placeholder="5"
+                      min={1}
+                      max={10}
+                      required
+                      classNames={{ input: 'glass-input' }}
+                      styles={{ label: { display: 'none' } }}
+                      {...form.getInputProps('max_team_size')}
+                    />
+                  </div>
                 </Grid.Col>
               </Grid>
             </Card>
@@ -391,7 +504,7 @@ export default function CreateCompetition() {
               </Group>
 
               {stages.length === 0 ? (
-                <Text c="dimmed" ta="center" py="md">
+                <Text c="white" ta="center" py="md">
                   Этапы пока не добавлены. Нажмите "Добавить этап".
                 </Text>
               ) : (
@@ -407,51 +520,81 @@ export default function CreateCompetition() {
 
                       <Grid>
                         <Grid.Col span={12}>
-                          <TextInput
+                          <ConsoleInput
                             label="Название этапа"
                             placeholder="напр., Регистрация, Отбор, Финал"
+                            consolePath={`C:\\Competition\\Stage${stage.stage_number}\\name`}
                             value={stage.name}
                             onChange={(e) => updateStage(index, 'name', e.target.value)}
                             required
-                            classNames={{ input: 'glass-input' }}
-                            styles={{ label: { color: '#ffffff', fontWeight: 600, marginBottom: 8 } }}
                           />
                         </Grid.Col>
 
                         <Grid.Col span={12}>
-                          <Textarea
+                          <ConsoleTextarea
                             label="Описание"
                             placeholder="Опишите этот этап"
+                            consolePath={`C:\\Competition\\Stage${stage.stage_number}\\desc`}
                             value={stage.description}
                             onChange={(e) => updateStage(index, 'description', e.target.value)}
                             minRows={2}
-                            classNames={{ input: 'glass-input' }}
-                            styles={{ label: { color: '#ffffff', fontWeight: 600, marginBottom: 8 } }}
                           />
                         </Grid.Col>
 
                         <Grid.Col span={6}>
-                          <DateInput
-                            label="Дата начала"
-                            placeholder="Выберите дату"
-                            value={stage.start_date}
-                            onChange={(value) => updateStage(index, 'start_date', value)}
-                            required
-                            classNames={{ input: 'glass-input' }}
-                            styles={{ label: { color: '#ffffff', fontWeight: 600, marginBottom: 8 } }}
-                          />
+                          <div>
+                            <div style={{ marginBottom: 4 }}>
+                              <span style={{ color: '#ffffff', fontWeight: 600, fontSize: '14px' }}>
+                                Дата начала
+                              </span>
+                            </div>
+                            <div style={{
+                              color: 'var(--vtb-cyan)',
+                              fontFamily: "'Courier New', 'Consolas', monospace",
+                              fontSize: '13px',
+                              fontWeight: 'bold',
+                              marginBottom: '4px',
+                              userSelect: 'none',
+                            }}>
+                              C:\Competition\Stage{stage.stage_number}\start_date &gt;
+                            </div>
+                            <DateInput
+                              placeholder="Выберите дату"
+                              value={stage.start_date}
+                              onChange={(value) => updateStage(index, 'start_date', value)}
+                              required
+                              classNames={{ input: 'glass-input' }}
+                              styles={{ label: { display: 'none' } }}
+                            />
+                          </div>
                         </Grid.Col>
 
                         <Grid.Col span={6}>
-                          <DateInput
-                            label="Дата окончания"
-                            placeholder="Выберите дату"
-                            value={stage.end_date}
-                            onChange={(value) => updateStage(index, 'end_date', value)}
-                            required
-                            classNames={{ input: 'glass-input' }}
-                            styles={{ label: { color: '#ffffff', fontWeight: 600, marginBottom: 8 } }}
-                          />
+                          <div>
+                            <div style={{ marginBottom: 4 }}>
+                              <span style={{ color: '#ffffff', fontWeight: 600, fontSize: '14px' }}>
+                                Дата окончания
+                              </span>
+                            </div>
+                            <div style={{
+                              color: 'var(--vtb-cyan)',
+                              fontFamily: "'Courier New', 'Consolas', monospace",
+                              fontSize: '13px',
+                              fontWeight: 'bold',
+                              marginBottom: '4px',
+                              userSelect: 'none',
+                            }}>
+                              C:\Competition\Stage{stage.stage_number}\end_date &gt;
+                            </div>
+                            <DateInput
+                              placeholder="Выберите дату"
+                              value={stage.end_date}
+                              onChange={(value) => updateStage(index, 'end_date', value)}
+                              required
+                              classNames={{ input: 'glass-input' }}
+                              styles={{ label: { display: 'none' } }}
+                            />
+                          </div>
                         </Grid.Col>
                       </Grid>
                     </VTBCard>
@@ -471,7 +614,7 @@ export default function CreateCompetition() {
                 </Group>
 
                 {cases.length === 0 ? (
-                  <Text c="dimmed" ta="center" py="md">
+                  <Text c="white" ta="center" py="md">
                     Кейсы не добавлены. Хакатоны требуют хотя бы один кейс.
                   </Text>
                 ) : (
@@ -487,41 +630,38 @@ export default function CreateCompetition() {
 
                         <Grid>
                           <Grid.Col span={12}>
-                            <TextInput
+                            <ConsoleInput
                               label="Название кейса"
                               placeholder="Введите название кейса"
+                              consolePath={`C:\\Competition\\Case${caseItem.case_number}\\title`}
                               value={caseItem.title}
                               onChange={(e) => updateCase(index, 'title', e.target.value)}
                               required
-                              classNames={{ input: 'glass-input' }}
-                              styles={{ label: { color: '#ffffff', fontWeight: 600, marginBottom: 8 } }}
                             />
                           </Grid.Col>
 
                           <Grid.Col span={12}>
-                            <Textarea
+                            <ConsoleTextarea
                               label="Описание кейса"
                               placeholder="Опишите задачу для решения"
+                              consolePath={`C:\\Competition\\Case${caseItem.case_number}\\desc`}
                               value={caseItem.description}
                               onChange={(e) => updateCase(index, 'description', e.target.value)}
                               minRows={3}
                               required
-                              classNames={{ input: 'glass-input' }}
-                              styles={{ label: { color: '#ffffff', fontWeight: 600, marginBottom: 8 } }}
                             />
                           </Grid.Col>
 
                           <Grid.Col span={12}>
-                            <MultiSelect
+                            <ConsoleMultiSelect
                               label="Стек технологий"
                               placeholder="Выберите требуемые технологии"
+                              consolePath={`C:\\Competition\\Case${caseItem.case_number}\\stack`}
                               data={TECH_STACK_OPTIONS}
                               value={caseItem.knowledge_stack}
                               onChange={(value) => updateCase(index, 'knowledge_stack', value)}
                               searchable
                               required
-                              classNames={{ input: 'glass-input' }}
-                              styles={{ label: { color: '#ffffff', fontWeight: 600, marginBottom: 8 } }}
                             />
                           </Grid.Col>
                         </Grid>

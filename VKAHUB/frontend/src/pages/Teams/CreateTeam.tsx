@@ -1,14 +1,17 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Container, Title, TextInput, Textarea, Stack, Box, Text, Grid, Group, rem, MultiSelect } from '@mantine/core';
+import { Container, Title, Stack, Box, Text, Grid, Group, rem } from '@mantine/core';
 import { Dropzone, IMAGE_MIME_TYPE, FileWithPath } from '@mantine/dropzone';
 import { useForm } from '@mantine/form';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
-import { IconUsers, IconPhoto, IconArrowLeft, IconUpload, IconX, IconFlag } from '@tabler/icons-react';
+import { IconUsers, IconPhoto, IconArrowLeft, IconUpload, IconX } from '@tabler/icons-react';
 import { ActionIcon } from '@mantine/core';
 import { VTBCard } from '../../components/common/VTBCard';
 import { VTBButton } from '../../components/common/VTBButton';
+import { ConsoleInput } from '../../components/common/ConsoleInput';
+import { ConsoleMultiSelect } from '../../components/common/ConsoleMultiSelect';
+import { ConsoleTextarea } from '../../components/common/ConsoleTextarea';
 import { teamsApi } from '../../api';
 import { invalidateTeamQueries } from '../../utils/cacheInvalidation';
 
@@ -134,7 +137,7 @@ export function CreateTeam() {
           <Title order={1} className="vtb-heading-hero">
             <span className="vtb-gradient-text">Создать команду</span>
           </Title>
-          <Text size="lg" c="dimmed" mt="md">
+          <Text size="lg" c="white" mt="md">
             Создайте свою команду для участия в соревнованиях
           </Text>
         </div>
@@ -225,10 +228,10 @@ export function CreateTeam() {
                           <Text size="sm" c="white" ta="center">
                             Перетащите изображение сюда
                           </Text>
-                          <Text size="xs" c="dimmed" ta="center" mt={4}>
+                          <Text size="xs" c="white" ta="center" mt={4}>
                             или нажмите для выбора файла
                           </Text>
-                          <Text size="xs" c="dimmed" ta="center" mt={4}>
+                          <Text size="xs" c="white" ta="center" mt={4}>
                             Максимум 5 МБ
                           </Text>
                         </div>
@@ -240,28 +243,20 @@ export function CreateTeam() {
 
               <Grid.Col span={{ base: 12, md: 8 }}>
                 <Stack gap="lg">
-                  <TextInput
+                  <ConsoleInput
                     label="Название команды"
                     placeholder="Введите название команды"
-                    leftSection={<IconUsers size={18} />}
+                    consolePath="C:\Team\name"
                     size="md"
-                    classNames={{ input: 'glass-input' }}
-                    styles={{
-                      label: { color: '#ffffff', fontWeight: 600, marginBottom: 8 },
-                    }}
                     {...form.getInputProps('name')}
                     required
                   />
 
-                  <MultiSelect
+                  <ConsoleMultiSelect
                     label="Направление команды"
                     placeholder="Выберите до 2 направлений"
-                    leftSection={<IconFlag size={18} />}
+                    consolePath="C:\Team\direction"
                     size="md"
-                    classNames={{ input: 'glass-input' }}
-                    styles={{
-                      label: { color: '#ffffff', fontWeight: 600, marginBottom: 8 },
-                    }}
                     data={[
                       { value: 'CTF', label: 'CTF' },
                       { value: 'Хакатон', label: 'Хакатон' },
@@ -281,29 +276,22 @@ export function CreateTeam() {
                   />
 
                   {isCustomDirection && (
-                    <TextInput
+                    <ConsoleInput
                       label="Укажите направление"
                       placeholder="Введите направление команды"
-                      leftSection={<IconFlag size={18} />}
+                      consolePath="C:\Team\custom_direction"
                       size="md"
-                      classNames={{ input: 'glass-input' }}
-                      styles={{
-                        label: { color: '#ffffff', fontWeight: 600, marginBottom: 8 },
-                      }}
                       {...form.getInputProps('customDirection')}
                       required
                     />
                   )}
 
-                  <Textarea
+                  <ConsoleTextarea
                     label="Описание"
                     placeholder="Опишите цели и направление деятельности команды..."
+                    consolePath="C:\Team\description"
                     rows={6}
                     size="md"
-                    classNames={{ input: 'glass-input' }}
-                    styles={{
-                      label: { color: '#ffffff', fontWeight: 600, marginBottom: 8 },
-                    }}
                     {...form.getInputProps('description')}
                   />
 
@@ -315,7 +303,7 @@ export function CreateTeam() {
                       borderRadius: 12,
                     }}
                   >
-                    <Text size="sm" c="dimmed">
+                    <Text size="sm" c="white">
                       <strong style={{ color: 'var(--vtb-cyan)' }}>Важно:</strong> После создания команды вы станете её капитаном. Вы сможете управлять составом команды, принимать заявки на вступление и редактировать информацию о команде.
                     </Text>
                   </Box>

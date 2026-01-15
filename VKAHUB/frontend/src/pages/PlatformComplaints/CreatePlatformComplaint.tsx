@@ -1,11 +1,12 @@
 import { useNavigate } from 'react-router-dom';
-import { Container, Title, Textarea, Stack, Box, Text, Group, Select, TextInput } from '@mantine/core';
+import { Container, Title, Textarea, Stack, Box, Text, Group, TextInput } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
-import { IconMessageReport, IconArrowLeft, IconSend, IconCategory, IconAlertTriangle } from '@tabler/icons-react';
+import { IconMessageReport, IconArrowLeft, IconSend } from '@tabler/icons-react';
 import { VTBCard } from '../../components/common/VTBCard';
 import { VTBButton } from '../../components/common/VTBButton';
+import { ConsoleSelect } from '../../components/common/ConsoleSelect';
 import { platformComplaintsApi, PlatformComplaintCategory, ComplaintPriority } from '../../api/platformComplaints';
 import { invalidateComplaintQueries } from '../../utils/cacheInvalidation';
 
@@ -100,7 +101,7 @@ export function CreatePlatformComplaint() {
           <Title order={1} className="vtb-heading-hero">
             <span className="vtb-gradient-text">Обратная связь</span>
           </Title>
-          <Text size="lg" c="dimmed" mt="md">
+          <Text size="lg" c="white" mt="md">
             Сообщите об ошибке или предложите улучшение платформы
           </Text>
         </div>
@@ -108,30 +109,22 @@ export function CreatePlatformComplaint() {
         <VTBCard variant="primary">
           <form onSubmit={form.onSubmit(handleSubmit)}>
             <Stack gap="lg">
-              <Select
+              <ConsoleSelect
                 label="Категория обращения"
                 placeholder="Выберите категорию"
+                consolePath="C:\Feedback\category"
                 data={COMPLAINT_CATEGORIES}
-                leftSection={<IconCategory size={18} />}
                 size="md"
-                classNames={{ input: 'glass-input' }}
-                styles={{
-                  label: { color: '#ffffff', fontWeight: 600, marginBottom: 8 },
-                }}
                 {...form.getInputProps('category')}
                 required
               />
 
-              <Select
+              <ConsoleSelect
                 label="Степень важности"
                 placeholder="Выберите приоритет"
+                consolePath="C:\Feedback\priority"
                 data={PRIORITY_OPTIONS}
-                leftSection={<IconAlertTriangle size={18} />}
                 size="md"
-                classNames={{ input: 'glass-input' }}
-                styles={{
-                  label: { color: '#ffffff', fontWeight: 600, marginBottom: 8 },
-                }}
                 {...form.getInputProps('priority')}
                 required
               />
@@ -175,7 +168,7 @@ export function CreatePlatformComplaint() {
                     Ваше мнение важно для нас
                   </Text>
                 </Group>
-                <Text size="sm" c="dimmed">
+                <Text size="sm" c="white">
                   Мы рассматриваем каждое обращение. Ваши замечания и предложения помогают нам делать платформу лучше!
                 </Text>
               </Box>

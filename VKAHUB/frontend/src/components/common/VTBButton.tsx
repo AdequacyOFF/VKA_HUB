@@ -36,7 +36,7 @@ export const VTBButton = forwardRef<HTMLButtonElement, VTBButtonProps>(function 
       {...props}
       className={`${getVariantClass()} ${className}`.trim()}
       size="md"
-      radius="md"
+      radius={0}
       variant="filled"
     >
       {children}

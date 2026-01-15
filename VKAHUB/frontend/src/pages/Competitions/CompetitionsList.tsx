@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Container, Title, Grid, Stack, TextInput, Select, Group, Text } from '@mantine/core';
+import { Container, Title, Grid, Stack, Group, Text } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
-import { IconSearch, IconTrophy, IconFilter } from '@tabler/icons-react';
+import { IconTrophy } from '@tabler/icons-react';
 import { VTBCard } from '../../components/common/VTBCard';
 import { CompetitionCard } from '../../components/common/CompetitionCard';
+import { ConsoleInput } from '../../components/common/ConsoleInput';
+import { ConsoleSelect } from '../../components/common/ConsoleSelect';
 import { competitionsApi } from '../../api';
 
 export function CompetitionsList() {
@@ -63,24 +65,23 @@ export function CompetitionsList() {
           <Title order={1} className="vtb-heading-hero">
             <span className="vtb-gradient-text">Соревнования</span>
           </Title>
-          <Text size="lg" c="dimmed" mt="md">
+          <Text size="lg" c="white" mt="md">
             Примите участие в хакатонах, олимпиадах и чемпионатах
           </Text>
         </div>
 
         <VTBCard variant="secondary">
           <Group gap="md" grow>
-            <TextInput
+            <ConsoleInput
               placeholder="Поиск соревнований..."
-              leftSection={<IconSearch size={18} />}
+              consolePath="C:\Competitions\search"
               value={search}
               onChange={(e) => setSearch(e.currentTarget.value)}
               size="md"
-              classNames={{ input: 'glass-input' }}
             />
-            <Select
+            <ConsoleSelect
               placeholder="Статус"
-              leftSection={<IconFilter size={18} />}
+              consolePath="C:\Competitions\status"
               data={[
                 { value: 'upcoming', label: 'Предстоящие' },
                 { value: 'ongoing', label: 'Идут сейчас' },
@@ -90,11 +91,10 @@ export function CompetitionsList() {
               onChange={setStatusFilter}
               clearable
               size="md"
-              classNames={{ input: 'glass-input' }}
             />
-            <Select
+            <ConsoleSelect
               placeholder="Тип"
-              leftSection={<IconTrophy size={18} />}
+              consolePath="C:\Competitions\type"
               data={[
                 { value: '', label: 'Все' },
                 { value: 'hackathon', label: 'Хакатон' },
@@ -105,7 +105,6 @@ export function CompetitionsList() {
               onChange={setTypeFilter}
               clearable
               size="md"
-              classNames={{ input: 'glass-input' }}
             />
           </Group>
         </VTBCard>
@@ -126,7 +125,7 @@ export function CompetitionsList() {
           <VTBCard variant="primary">
             <Stack align="center" gap="md" py="xl">
               <IconTrophy size={80} color="var(--vtb-cyan)" opacity={0.5} />
-              <Text size="lg" c="dimmed" ta="center">
+              <Text size="lg" c="white" ta="center">
                 {search || statusFilter || typeFilter
                   ? 'Соревнования не найдены'
                   : 'Нет доступных соревнований'}

@@ -38,7 +38,7 @@ export function VTBCard({
       {...props}
       className={`${getVariantClass()} ${className}`}
       p="xl"
-      radius="lg"
+      radius={0}
       style={{
         cursor: hover ? 'pointer' : 'default',
         ...style,

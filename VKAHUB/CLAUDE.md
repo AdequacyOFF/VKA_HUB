@@ -8,35 +8,54 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Quick Start Commands
 
-### Development Environment
+### Development Environment (Recommended)
 
 ```bash
-# Start all services (recommended for development)
+# Start all services with auto-reload
 make dev
-# Backend: http://localhost:8000 (auto-reload enabled)
+# Backend: http://localhost:8000 (Uvicorn with --reload)
 # Frontend: http://localhost:3001 (Vite dev server with HMR)
-# API Docs: http://localhost:8000/docs
-# DB Admin: http://localhost:8080
+# API Docs: http://localhost:8000/docs (interactive Swagger UI)
+# DB Admin: http://localhost:8080 (Adminer)
 
-# View logs
+# View real-time logs
 make dev-logs
 
 # Stop services
 make dev-down
+
+# Access shells
+docker exec -it vkahub_backend bash
+docker exec -it vkahub_postgres psql -U vkahub -d vkahub
 ```
 
 ### Production Environment
 
 ```bash
-# Start in production mode
+# Start in production mode (uses prebuilt images)
 make prod-up
-# Frontend: http://localhost:3000 (NGINX)
+# Frontend: http://localhost:3000 (NGINX static files)
+# Backend: http://localhost:8000
 
-# Restart containers (no rebuild)
+# Restart without rebuilding (fast)
 make restart
+
+# View logs
+make logs
 
 # Stop services
 make prod-down
+```
+
+### Quick Reference
+
+```bash
+# Most common workflow:
+make dev              # Start dev environment
+# Edit code in backend/app/ or frontend/src/
+# Changes apply automatically (no restart needed)
+make dev-logs        # Watch logs if needed
+make dev-down        # Stop when done
 ```
 
 ### Database Operations
@@ -59,14 +78,47 @@ docker compose exec postgres psql -U vkahub
 ### Testing
 
 ```bash
-# Run backend tests
+# Backend tests (from host machine)
 docker compose exec backend pytest
+docker compose exec backend pytest --cov              # With coverage report
+docker compose exec backend pytest -v                 # Verbose output
+docker compose exec backend pytest tests/test_auth.py # Specific test file
 
-# Run backend tests with coverage
-docker compose exec backend pytest --cov
-
-# Run frontend tests
+# Frontend tests
 docker compose exec frontend npm test
+docker compose exec frontend npm run test:coverage
+
+# Test files locations:
+# Backend: backend/tests/
+# Frontend: frontend/src/**/*.test.tsx
+```
+
+### Debugging & Development
+
+```bash
+# View live logs (essential for debugging)
+docker compose logs -f backend    # Backend logs only
+docker compose logs -f frontend   # Frontend logs only
+docker compose logs -f            # All services
+
+# Check if services are running
+docker compose ps
+
+# Restart specific service (if code changes aren't applying)
+docker compose restart backend
+docker compose restart frontend
+
+# Access Python shell in backend container
+docker exec -it vkahub_backend python
+>>> from app.infrastructure.db.database import get_session
+>>> # Interactive debugging
+
+# Check database connection
+docker exec -it vkahub_postgres psql -U vkahub -d vkahub -c "SELECT COUNT(*) FROM users;"
+
+# Clear all data and start fresh (DESTRUCTIVE)
+docker compose down -v  # Deletes volumes
+make dev                # Rebuilds and runs migrations
 ```
 
 ### Container Access
@@ -135,7 +187,16 @@ The backend follows Clean Architecture with four distinct layers:
   - `ProfileCompletionCheck`: Ensures profile is complete
   - Feature-specific components organized by domain
 
-- **Pages** (`src/pages/`): Full page components organized by feature (Auth, Teams, Competitions, Profile, Moderator)
+- **Pages** (`src/pages/`): Full page components organized by feature
+  - `Auth/` - Login, Register, Recovery
+  - `Home.tsx` - Landing page
+  - `Profile/` - User profile with tabs
+  - `Users/` - User browsing and details
+  - `Teams/` - Team management pages
+  - `Competitions/` - Competition browsing and registration
+  - `Complaints/` - User complaint submission
+  - `PlatformComplaints/` - Platform feedback submission
+  - `Moderator/` - Admin dashboard and management pages
 
 - **Types** (`src/types/`): TypeScript interfaces for API responses and domain models
 
@@ -201,8 +262,17 @@ The backend follows Clean Architecture with four distinct layers:
 ### 7. Database Migration Strategy
 - **Alembic** for database migrations in `backend/alembic/versions/`
 - Migrations run automatically on container startup via `docker-entrypoint.sh`
-- Always run migrations in order: `001` → `002` → ... → `020`
+- **20 migration files** (001-020) must be applied in sequence
 - Migration files are async-compatible using SQLAlchemy 2.0
+- Key migrations:
+  - `001_initial_schema.py` - Base tables (users, teams, competitions, etc.)
+  - `003_seed_roles_and_skills.py` - Seeds default roles and skills
+  - `005_add_competition_stages_and_cases.py` - Multi-stage/case competitions
+  - `007_add_is_banned_and_schema_fixes.py` - User ban functionality
+  - `008_add_user_complaints_table.py` - User complaint system
+  - `009_add_platform_complaints_table.py` - Platform feedback system
+  - `016_create_notifications_table.py` - Notification system
+  - `020_change_competition_dates_to_datetime.py` - Latest schema update
 
 ### 8. Frontend State Persistence
 - Auth state persists in browser localStorage via Zustand middleware
@@ -260,9 +330,15 @@ The backend follows Clean Architecture with four distinct layers:
 
 **notifications**
 - Event notification system
+- Fields: user_id, title, message, type, is_read, created_at
 
-**complaints**
-- User complaints and platform feedback
+**user_complaints**
+- User-reported complaints against other users
+- Fields: complainant_id, accused_id, reason, description, status, reviewed_by, reviewed_at
+
+**platform_complaints**
+- General platform feedback and suggestions
+- Fields: user_id, category, title, description, priority, status, reviewed_by, reviewed_at
 
 ### Important Relationships
 
@@ -476,14 +552,123 @@ VITE_API_URL=http://localhost:8000
 
 1. **Always use async/await**: All database operations must be awaited; never block the event loop
 2. **Database sessions**: Always use `Depends(get_db)` in routers; don't create sessions manually
-3. **CORS configuration**: Frontend URL must be in `CORS_ORIGINS` in backend settings
-4. **Migration order**: Migrations must be applied in sequence; check migration history before creating new ones
+3. **CORS configuration**: Frontend URL must be in `CORS_ORIGINS` in backend settings (default includes localhost:3000, 3001, 5173)
+4. **Migration order**: Migrations must be applied in sequence; there are 20 migrations (001-020); never skip
 5. **Token refresh is automatic**: Frontend Axios interceptor handles token refresh; no manual handling needed in components
 6. **File uploads**: Check `MAX_UPLOAD_SIZE_MB` setting and allowed extensions in `infrastructure/storage/file_handler.py`
 7. **Error handling**: Global error handler in `presentation/middlewares/error_handler.py` catches all exceptions
 8. **Logging**: Use Python's `logging` module; configured in `config/logging.py`
 9. **System user protection**: User ID 1 (system user) cannot be deleted or modified; enforced in `security/system_user_protection.py`
 10. **Hot reload**: In dev mode, code changes apply automatically (backend via Uvicorn `--reload`, frontend via Vite HMR)
+
+## Troubleshooting Common Issues
+
+### "Port already in use" Error
+
+**Cause**: Another process is using port 3000, 3001, 8000, 5432, or 8080
+
+**Solution**:
+```bash
+# Stop all running containers
+docker compose down
+docker compose -f docker-compose.yml -f docker-compose.dev.yml down
+
+# Check what's using the port (example for port 8000)
+# Windows:
+netstat -ano | findstr :8000
+# Linux/Mac:
+lsof -i :8000
+
+# Kill the process or use different ports in docker-compose.yml
+```
+
+### Changes Not Appearing (Hot Reload Not Working)
+
+**Cause**: Usually volume mount issues or container not in dev mode
+
+**Solution**:
+```bash
+# Verify you're in dev mode (not prod)
+docker compose ps  # Should show vkahub_frontend_dev
+
+# Check logs for errors
+docker compose logs -f backend
+docker compose logs -f frontend
+
+# Force restart the service
+docker compose restart backend
+docker compose restart frontend
+
+# Nuclear option: rebuild everything
+make dev-down
+make dev
+```
+
+### "Cannot connect to database" or Migration Errors
+
+**Cause**: PostgreSQL not ready or migrations not applied
+
+**Solution**:
+```bash
+# Check if postgres is running
+docker compose ps postgres
+
+# Check postgres logs
+docker compose logs postgres
+
+# Wait for postgres to be ready, then run migrations manually
+docker compose exec backend alembic upgrade head
+
+# Check migration status
+docker compose exec backend alembic current
+
+# If migrations are stuck, check which migration failed
+docker compose logs backend | grep -i "alembic\|migration\|error"
+```
+
+### Frontend Shows Blank Page or 404
+
+**Cause**: Build issue or wrong port
+
+**Solution**:
+```bash
+# Make sure you're using the right port:
+# Dev mode: http://localhost:3001
+# Prod mode: http://localhost:3000
+
+# Check frontend logs
+docker compose logs frontend
+
+# Rebuild frontend if needed
+docker compose down
+docker compose -f docker-compose.yml -f docker-compose.dev.yml build frontend
+make dev
+```
+
+### "403 Forbidden" on API Calls
+
+**Cause**: Token expired, insufficient permissions, or banned user
+
+**Solution**:
+- Check if user has required role (Captain for team creation, Moderator for admin actions)
+- Check if user is banned: `SELECT is_banned FROM users WHERE id = X;`
+- Check token expiration in browser DevTools → Application → LocalStorage
+- Try logging out and back in
+
+### Database Connection Pool Exhausted
+
+**Cause**: Too many concurrent connections or connections not being closed
+
+**Solution**:
+```bash
+# Check active connections
+docker exec -it vkahub_postgres psql -U vkahub -d vkahub -c "SELECT count(*) FROM pg_stat_activity;"
+
+# Restart backend to reset pool
+docker compose restart backend
+
+# Long-term: Review code for unclosed sessions
+```
 
 ## Technology Stack
 
@@ -552,6 +737,29 @@ Full interactive API documentation available at http://localhost:8000/docs (Swag
 
 **Moderator** (`/api/moderator`)
 - `GET /dashboard` - Admin dashboard statistics
-- `POST /users/{id}/ban` - Ban user
+- `POST /users/{id}/ban` - Ban/unban user
 - `POST /competitions` - Create competition
 - Various management endpoints
+
+**Public** (`/api/public`)
+- `GET /roles` - List all roles
+- `GET /skills` - List all skills
+- Public endpoints accessible without authentication
+
+**Complaints & Feedback**
+- `POST /api/users/complaints` - Submit user complaint (report another user)
+- `GET /api/users/complaints` - List complaints (moderator only)
+- `POST /api/users/platform-complaints` - Submit platform feedback
+- `GET /api/users/platform-complaints` - List platform feedback (moderator only)
+
+### API Router Files Reference
+
+All API routers are in `backend/app/presentation/api/routers/`:
+- `auth.py` - Authentication endpoints (login, register, refresh, password recovery)
+- `users.py` - User management (35KB, extensive user operations)
+- `teams.py` - Team operations (31KB, team creation, join requests, member management)
+- `competitions.py` - Competition management (43KB, includes cases, stages, registrations, reports)
+- `certificates.py` - Certificate uploads and management
+- `reports.py` - Competition report submissions
+- `moderator.py` - Moderator dashboard and admin operations (35KB)
+- `public.py` - Public endpoints (roles, skills)

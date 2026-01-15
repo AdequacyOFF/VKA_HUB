@@ -64,7 +64,7 @@ export const CardTheme = Card.extend({
   },
   defaultProps: {
     shadow: 'xl',
-    radius: 'lg',
+    radius: 0,
   },
 });
 
@@ -79,7 +79,7 @@ export const PaperTheme = Paper.extend({
   },
   defaultProps: {
     shadow: 'md',
-    radius: 'lg',
+    radius: 0,
   },
 });
 

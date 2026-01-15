@@ -1,5 +1,10 @@
 export { VTBCard } from './VTBCard';
 export { VTBButton } from './VTBButton';
+export { ConsoleInput } from './ConsoleInput';
+export { ConsolePasswordInput } from './ConsolePasswordInput';
+export { ConsoleTextarea } from './ConsoleTextarea';
+export { ConsoleSelect } from './ConsoleSelect';
+export { ConsoleMultiSelect } from './ConsoleMultiSelect';
 export { AvatarUploader } from './AvatarUploader';
 export { FileUploader } from './FileUploader';
 export { UserCard } from './UserCard';

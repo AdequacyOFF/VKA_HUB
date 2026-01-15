@@ -8,7 +8,7 @@ export function AuthLayout() {
         <Paper
           className="glass-card"
           p="xl"
-          radius="lg"
+          radius={0}
           style={{
             border: '1px solid rgba(255, 255, 255, 0.18)',
           }}
