@@ -13,6 +13,7 @@ import { VTBCard } from '../components/common/VTBCard';
 import { VTBButton } from '../components/common/VTBButton';
 import { useAuthStore } from '../store/authStore';
 import { publicApi } from '../api';
+import { queryKeys } from '../api/queryKeys';
 
 // Import neon icons
 import neonComputer from '../assets/images/neon_computer.png';
@@ -27,7 +28,7 @@ export function Home() {
   const { user, isAuthenticated } = useAuthStore();
 
   const { data: stats, isLoading: statsLoading } = useQuery({
-    queryKey: ['public-stats'],
+    queryKey: queryKeys.public.stats(),
     queryFn: publicApi.getStats,
     staleTime: 60000,
   });

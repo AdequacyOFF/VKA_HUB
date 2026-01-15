@@ -11,6 +11,8 @@ import { api } from '../../../api';
 import { useAuthStore } from '../../../store/authStore';
 import { Team, TeamMember } from '../../../types';
 import { navigateWithHistory } from '../../../utils/navigation';
+import { queryKeys } from '../../../api/queryKeys';
+import { invalidateTeamQueries, invalidateUserQueries } from '../../../utils/cacheInvalidation';
 
 export function MyTeam() {
   const user = useAuthStore((state) => state.user);
@@ -23,7 +25,7 @@ export function MyTeam() {
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
 
   const { data: teams, isLoading } = useQuery<Team[]>({
-    queryKey: ['my-team', user?.id],
+    queryKey: queryKeys.teams.myTeam(user?.id),
     queryFn: async () => {
       try {
         const response = await api.get('/api/users/my-team');
@@ -41,7 +43,8 @@ export function MyTeam() {
   const leaveMutation = useMutation({
     mutationFn: () => api.post(`/api/teams/${selectedTeam?.id}/leave`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['my-team'] });
+      invalidateTeamQueries({ queryClient }, selectedTeam?.id);
+      invalidateUserQueries({ queryClient }, user?.id);
       notifications.show({
         title: 'Успех',
         message: 'Вы покинули команду',

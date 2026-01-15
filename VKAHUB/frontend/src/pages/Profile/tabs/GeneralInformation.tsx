@@ -9,6 +9,7 @@ import { AvatarUploader } from '../../../components/common/AvatarUploader';
 import { ConfirmModal } from '../../../components/common/ConfirmModal';
 import { useAuthStore } from '../../../store/authStore';
 import { usersApi, api } from '../../../api';
+import { queryKeys } from '../../../api/queryKeys';
 
 const militaryRanks = [
   'Рядовой',
@@ -42,7 +43,7 @@ export function GeneralInformation() {
   const [confirmModalOpened, setConfirmModalOpened] = useState(false);
 
   const { data: currentUser } = useQuery({
-    queryKey: ['current-user-profile'],
+    queryKey: queryKeys.users.profile(),
     queryFn: async () => {
       const response = await api.get('/api/users/me');
       setUser(response.data);

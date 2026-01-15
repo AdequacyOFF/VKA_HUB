@@ -6,9 +6,11 @@ import { VTBCard } from '../../components/common/VTBCard';
 import { VTBButton } from '../../components/common/VTBButton';
 import { api } from '../../api';
 import dayjs from 'dayjs';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { notifications } from '@mantine/notifications';
 import { useAuthStore } from '../../store/authStore';
+import { queryKeys } from '../../api/queryKeys';
+import { invalidateTeamQueries } from '../../utils/cacheInvalidation';
 
 interface Report {
   id: number;
@@ -46,7 +48,7 @@ export function TeamReports() {
   
   // ✅ Получаем информацию о команде для проверки капитана
   const { data: team } = useQuery({
-    queryKey: ['team', id],
+    queryKey: queryKeys.teams.detail(id!),
     queryFn: async () => {
       try {
         const response = await api.get(`/api/teams/${id}`);
@@ -66,7 +68,7 @@ export function TeamReports() {
   const canAddReports = fromProfile && isCaptain;
 
   const { data: reports = [], isLoading } = useQuery<Report[]>({
-    queryKey: ['team-reports', id],
+    queryKey: queryKeys.teams.reports(id!),
     queryFn: async () => {
       try {
         const response = await api.get(`/api/teams/${id}/reports`);
@@ -86,7 +88,7 @@ export function TeamReports() {
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['team-reports', id] });
+      invalidateTeamQueries({ queryClient }, id);
       notifications.show({
         title: 'Успех',
         message: 'Отчет создан',
@@ -114,7 +116,7 @@ export function TeamReports() {
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['team-reports', id] });
+      invalidateTeamQueries({ queryClient }, id);
       notifications.show({
         title: 'Успех',
         message: 'Отчет обновлен',
@@ -140,7 +142,7 @@ export function TeamReports() {
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['team-reports', id] });
+      invalidateTeamQueries({ queryClient }, id);
       notifications.show({
         title: 'Успех',
         message: 'Отчет удален',

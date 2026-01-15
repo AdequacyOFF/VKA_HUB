@@ -8,6 +8,7 @@ import { VTBCard } from '../../components/common/VTBCard';
 import { VTBButton } from '../../components/common/VTBButton';
 import { ConfirmModal } from '../../components/common/ConfirmModal';
 import { teamsApi } from '../../api';
+import { queryKeys } from '../../api/queryKeys';
 import { useAuthStore } from '../../store/authStore';
 import { Team, TeamMember, TeamStatistics } from '../../types';
 import { invalidateTeamQueries } from '../../utils/cacheInvalidation';
@@ -20,7 +21,7 @@ export function TeamDetail() {
   const [joinModalOpened, setJoinModalOpened] = useState(false);
 
   const { data: team, isLoading, error } = useQuery<Team>({
-    queryKey: ['team', id],
+    queryKey: queryKeys.teams.detail(id!),
     queryFn: async () => {
       if (!id) throw new Error('Team ID is required');
       return await teamsApi.getTeam(Number(id));
@@ -29,7 +30,7 @@ export function TeamDetail() {
   });
 
   const { data: statistics } = useQuery<TeamStatistics>({
-    queryKey: ['team-statistics', id],
+    queryKey: queryKeys.teams.statistics(id!),
     queryFn: async () => {
       if (!id) throw new Error('Team ID is required');
       return await teamsApi.getTeamStatistics(Number(id));

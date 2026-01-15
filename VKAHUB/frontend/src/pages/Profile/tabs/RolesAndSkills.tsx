@@ -8,6 +8,8 @@ import { MultiSelectRoles } from '../../../components/common/MultiSelectRoles';
 import { MultiSelectSkills } from '../../../components/common/MultiSelectSkills';
 import { api } from '../../../api';
 import { useAuthStore } from '../../../store/authStore';
+import { queryKeys } from '../../../api/queryKeys';
+import { invalidateUserQueries } from '../../../utils/cacheInvalidation';
 
 export function RolesAndSkills() {
   const user = useAuthStore((state) => state.user);
@@ -16,7 +18,7 @@ export function RolesAndSkills() {
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
-    queryKey: ['user-roles-skills', user?.id],
+    queryKey: queryKeys.users.rolesSkills(user?.id),
     queryFn: async () => {
       const response = await api.get(`/api/users/${user?.id}/roles-skills`);
       setSelectedRoles(response.data.roles || []);
@@ -34,7 +36,7 @@ export function RolesAndSkills() {
       return api.put(`/api/users/${user?.id}/roles-skills`, data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['user-roles-skills', user?.id] });
+      invalidateUserQueries({ queryClient }, user?.id);
       notifications.show({
         title: 'Успех',
         message: 'Роли и навыки обновлены',

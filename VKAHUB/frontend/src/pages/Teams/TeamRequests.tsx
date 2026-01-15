@@ -7,6 +7,8 @@ import { VTBCard } from '../../components/common/VTBCard';
 import { VTBButton } from '../../components/common/VTBButton';
 import { api } from '../../api';
 import dayjs from 'dayjs';
+import { queryKeys } from '../../api/queryKeys';
+import { invalidateTeamQueries } from '../../utils/cacheInvalidation';
 
 interface JoinRequest {
   id: number;
@@ -27,7 +29,7 @@ export function TeamRequests() {
   const queryClient = useQueryClient();
 
   const { data: requests = [], isLoading } = useQuery<JoinRequest[]>({
-    queryKey: ['team-requests', id],
+    queryKey: queryKeys.teams.requests(id!),
     queryFn: async () => {
       try {
         const response = await api.get(`/api/teams/${id}/join-requests`);
@@ -44,8 +46,7 @@ export function TeamRequests() {
     mutationFn: (requestId: number) =>
       api.post(`/api/teams/${id}/join-requests/${requestId}/approve`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['team-requests', id] });
-      queryClient.invalidateQueries({ queryKey: ['team', id] });
+      invalidateTeamQueries({ queryClient }, id);
       notifications.show({
         title: 'Успех',
         message: 'Заявка одобрена',
@@ -65,7 +66,7 @@ export function TeamRequests() {
     mutationFn: (requestId: number) =>
       api.post(`/api/teams/${id}/join-requests/${requestId}/reject`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['team-requests', id] });
+      invalidateTeamQueries({ queryClient }, id);
       notifications.show({
         title: 'Успех',
         message: 'Заявка отклонена',

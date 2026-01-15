@@ -9,6 +9,7 @@ import { TeamCard } from '../../components/common/TeamCard';
 import { VTBCard } from '../../components/common/VTBCard';
 import { VTBButton } from '../../components/common/VTBButton';
 import { teamsApi } from '../../api';
+import { queryKeys } from '../../api/queryKeys';
 import { useAuthStore } from '../../store/authStore';
 import { Team } from '../../types';
 
@@ -18,7 +19,7 @@ export function TeamsList() {
   const [search, setSearch] = useState('');
 
   const { data: response = { items: [], total: 0 }, isLoading, error } = useQuery({
-    queryKey: ['teams'],
+    queryKey: queryKeys.teams.lists(),
     queryFn: async () => {
       const res = await teamsApi.getTeams({ limit: 100 });
       return res; // { total, items }

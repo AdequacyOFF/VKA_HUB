@@ -15,10 +15,11 @@ import {
 } from '@mantine/core';
 import { IconAlertCircle, IconUsers, IconTrophy, IconCheck } from '@tabler/icons-react';
 import { VTBButton } from './VTBButton';
-import { teamsApi, competitionsApi } from '../../api';
+import { teamsApi } from '../../api';
 import { Team, Competition } from '../../types';
 import { notifications } from '@mantine/notifications';
 import { useAuthStore } from '../../store/authStore';
+import { useApplyToCompetition } from '../../api/mutations/competitionMutations';
 
 interface TeamRegistrationModalProps {
   opened: boolean;
@@ -34,12 +35,14 @@ export function TeamRegistrationModal({
   onSuccess,
 }: TeamRegistrationModalProps) {
   const { user } = useAuthStore();
-  const [loading, setLoading] = useState(false);
   const [teams, setTeams] = useState<Team[]>([]);
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
   const [selectedMembers, setSelectedMembers] = useState<number[]>([]);
   const [selectedCase, setSelectedCase] = useState<number | null>(null);
   const [address, setAddress] = useState<string>('');
+
+  // Use centralized mutation hook with proper cache invalidation
+  const applyMutation = useApplyToCompetition(competition.id);
 
   useEffect(() => {
     const fetchTeams = async () => {
@@ -83,7 +86,7 @@ export function TeamRegistrationModal({
     );
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     if (!selectedTeam) return;
 
     // Validate team size
@@ -109,37 +112,38 @@ export function TeamRegistrationModal({
       return;
     }
 
-    setLoading(true);
-    try {
-      await competitionsApi.applyToCompetition(competition.id, {
+    applyMutation.mutate(
+      {
         team_id: selectedTeam.id,
         member_ids: selectedMembers,
         case_id: selectedCase,
         address: address || undefined,
-      });
+      },
+      {
+        onSuccess: () => {
+          notifications.show({
+            title: 'Успех',
+            message: 'Команда успешно зарегистрирована!',
+            color: 'green',
+          });
 
-      notifications.show({
-        title: 'Успех',
-        message: 'Команда успешно зарегистрирована!',
-        color: 'green',
-      });
-
-      onSuccess();
-      onClose();
-      // Reset state
-      setSelectedTeam(null);
-      setSelectedMembers([]);
-      setSelectedCase(null);
-      setAddress('');
-    } catch (error: any) {
-      notifications.show({
-        title: 'Ошибка',
-        message: error.response?.data?.detail || 'Не удалось зарегистрировать команду',
-        color: 'red',
-      });
-    } finally {
-      setLoading(false);
-    }
+          onSuccess();
+          onClose();
+          // Reset state
+          setSelectedTeam(null);
+          setSelectedMembers([]);
+          setSelectedCase(null);
+          setAddress('');
+        },
+        onError: (error: any) => {
+          notifications.show({
+            title: 'Ошибка',
+            message: error.response?.data?.detail || 'Не удалось зарегистрировать команду',
+            color: 'red',
+          });
+        },
+      }
+    );
   };
 
   const isValid =
@@ -325,7 +329,7 @@ export function TeamRegistrationModal({
               </VTBButton>
               <VTBButton
                 onClick={handleSubmit}
-                loading={loading}
+                loading={applyMutation.isPending}
                 disabled={!isValid}
                 leftSection={<IconTrophy size={18} />}
               >

@@ -1,7 +1,7 @@
-import { Outlet, Link } from 'react-router-dom';
-import { AppShell, Group, Button, Container, Text, Burger, Drawer, Stack, useMantineTheme } from '@mantine/core';
+import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
+import { AppShell, Group, Button, Container, Text, Burger, Drawer, Stack, useMantineTheme, ActionIcon, Tooltip } from '@mantine/core';
 import { useDisclosure, useMediaQuery } from '@mantine/hooks';
-import { IconShieldCheck, IconMessageReport } from '@tabler/icons-react';
+import { IconShieldCheck, IconMessageReport, IconArrowLeft } from '@tabler/icons-react';
 import { useAuthStore } from '@/store';
 import { UnreadResponsesModal } from '@/components/UnreadResponsesModal';
 
@@ -10,6 +10,11 @@ export function MainLayout() {
   const [opened, { toggle, close }] = useDisclosure(false);
   const theme = useMantineTheme();
   const isMobile = useMediaQuery(`(max-width: ${theme.breakpoints.md})`);
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Show back button on all pages except home
+  const showBackButton = location.pathname !== '/';
 
   const navItems = (
     <>
@@ -176,6 +181,31 @@ export function MainLayout() {
 
       <AppShell.Main style={{ minHeight: '100vh' }}>
         <Container size="xl" py="xl">
+          {showBackButton && (
+            <Tooltip label="Назад" position="right">
+              <ActionIcon
+                variant="subtle"
+                size="lg"
+                radius="xl"
+                onClick={() => navigate(-1)}
+                mb="md"
+                style={{
+                  color: 'rgba(255, 255, 255, 0.7)',
+                  transition: 'all 0.2s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = '#00d9ff';
+                  e.currentTarget.style.background = 'rgba(0, 217, 255, 0.1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = 'rgba(255, 255, 255, 0.7)';
+                  e.currentTarget.style.background = 'transparent';
+                }}
+              >
+                <IconArrowLeft size={24} />
+              </ActionIcon>
+            </Tooltip>
+          )}
           <Outlet />
         </Container>
       </AppShell.Main>

@@ -6,6 +6,8 @@ import { VTBCard } from '../../components/common/VTBCard';
 import { VTBButton } from '../../components/common/VTBButton';
 import { notifications } from '@mantine/notifications';
 import { moderatorApi, api } from '../../api';
+import { queryKeys } from '../../api/queryKeys';
+import { invalidateModeratorQueries } from '../../utils/cacheInvalidation';
 import { getErrorMessage } from '../../utils/errorHandler';
 
 export function ModeratorModerators() {
@@ -16,7 +18,7 @@ export function ModeratorModerators() {
   const [userSearch, setUserSearch] = useState('');
 
   const { data: moderators, isLoading, error } = useQuery({
-    queryKey: ['moderators-list'],
+    queryKey: queryKeys.moderator.moderators(),
     queryFn: async () => {
       const response = await moderatorApi.getModerators();
       return response.items || [];
@@ -24,7 +26,7 @@ export function ModeratorModerators() {
   });
 
   const { data: allUsers } = useQuery({
-    queryKey: ['all-users-for-moderator'],
+    queryKey: queryKeys.moderator.users(),
     queryFn: async () => {
       const response = await api.get('/api/moderator/users', { params: { limit: 1000 } });
       return response.data.items || [];
@@ -35,7 +37,7 @@ export function ModeratorModerators() {
   const removeMutation = useMutation({
     mutationFn: (userId: number) => moderatorApi.removeModerator(userId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['moderators-list'] });
+      invalidateModeratorQueries({ queryClient });
       notifications.show({ title: 'Успех', message: 'Модератор удалён', color: 'teal' });
     },
     onError: (error: unknown) => {
@@ -50,7 +52,7 @@ export function ModeratorModerators() {
   const addMutation = useMutation({
     mutationFn: (userId: number) => moderatorApi.assignModerator(userId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['moderators-list'] });
+      invalidateModeratorQueries({ queryClient });
       notifications.show({ title: 'Успех', message: 'Модератор добавлен', color: 'teal' });
       setAddModalOpened(false);
       setSelectedUserId(null);

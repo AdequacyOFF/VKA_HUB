@@ -7,6 +7,7 @@ import { MultiSelectRoles } from '../../components/common/MultiSelectRoles';
 import { MultiSelectSkills } from '../../components/common/MultiSelectSkills';
 import { VTBCard } from '../../components/common/VTBCard';
 import { usersApi } from '../../api';
+import { queryKeys } from '../../api/queryKeys';
 import { User } from '../../types';
 
 export function UsersList() {
@@ -17,7 +18,7 @@ export function UsersList() {
   const [rankFilter, setRankFilter] = useState('');
 
   const { data: users = [], isLoading, error } = useQuery<User[]>({
-    queryKey: ['users', search, selectedRoles, selectedSkills, groupFilter, rankFilter],
+    queryKey: queryKeys.users.list({ search, roles: selectedRoles, skills: selectedSkills, group: groupFilter, rank: rankFilter }),
     queryFn: async () => {
       try {
         const response = await usersApi.getUsers({

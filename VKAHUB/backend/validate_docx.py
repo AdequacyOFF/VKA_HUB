@@ -6,6 +6,7 @@ Validates that a generated DOCX is structurally valid and will open without repa
 
 import zipfile
 import sys
+import re
 from pathlib import Path
 from xml.etree import ElementTree as ET
 from typing import List, Tuple
@@ -20,10 +21,70 @@ class DOCXValidator:
         'word/document.xml',
     ]
 
+    # Regex for illegal XML 1.0 control characters
+    ILLEGAL_XML_CHARS_RE = re.compile(r'[\x00-\x08\x0b\x0c\x0e-\x1f]')
+
+    # Pattern to detect incorrectly namespaced attributes
+    BAD_ATTR_NAMESPACE_RE = re.compile(
+        r'\{http://schemas\.openxmlformats\.org[^}]+\}(ascii|hAnsi|cs|val|eastAsia)='
+    )
+
     def __init__(self, docx_path: str):
         self.docx_path = docx_path
         self.errors = []
         self.warnings = []
+
+    def _check_invalid_xml_characters(self, zf: zipfile.ZipFile) -> List[str]:
+        """
+        Check for illegal XML 1.0 control characters in text content.
+
+        These characters cause Word to show "unreadable content" repair prompts.
+
+        Returns:
+            List of warning/error messages
+        """
+        messages = []
+
+        for entry in zf.namelist():
+            if entry.endswith('.xml'):
+                try:
+                    content = zf.read(entry).decode('utf-8', errors='replace')
+                    matches = self.ILLEGAL_XML_CHARS_RE.findall(content)
+                    if matches:
+                        char_codes = [f"0x{ord(c):02x}" for c in set(matches)]
+                        messages.append(
+                            f"  ⚠️  {entry} contains illegal XML control characters: {char_codes}"
+                        )
+                except Exception as e:
+                    messages.append(f"  ⚠️  Could not check {entry}: {e}")
+
+        return messages
+
+    def _check_attribute_namespaces(self, zf: zipfile.ZipFile) -> List[str]:
+        """
+        Check for incorrectly namespaced attributes in XML elements.
+
+        In OOXML, element attributes like 'ascii', 'val', 'hAnsi' should NOT
+        have namespace prefixes. Patterns like {http://...}ascii="value" are invalid.
+
+        Returns:
+            List of warning messages
+        """
+        messages = []
+
+        for entry in zf.namelist():
+            if entry.endswith('.xml'):
+                try:
+                    content = zf.read(entry).decode('utf-8', errors='replace')
+                    matches = self.BAD_ATTR_NAMESPACE_RE.findall(content)
+                    if matches:
+                        messages.append(
+                            f"  ⚠️  {entry} has incorrectly namespaced attributes: {set(matches)}"
+                        )
+                except Exception:
+                    pass  # Skip files we can't read
+
+        return messages
 
     def validate(self) -> Tuple[bool, List[str]]:
         """
@@ -88,6 +149,24 @@ class DOCXValidator:
                         return False, messages
                     except Exception as e:
                         messages.append(f"  ⚠️  {xml_file} - {e}")
+
+                # Check for invalid XML control characters
+                messages.append("🔍 Checking for invalid XML characters...")
+                char_warnings = self._check_invalid_xml_characters(zf)
+                if char_warnings:
+                    for warning in char_warnings:
+                        messages.append(warning)
+                else:
+                    messages.append("  ✅ No illegal control characters found")
+
+                # Check for incorrectly namespaced attributes
+                messages.append("🔍 Checking attribute namespaces...")
+                attr_warnings = self._check_attribute_namespaces(zf)
+                if attr_warnings:
+                    for warning in attr_warnings:
+                        messages.append(warning)
+                else:
+                    messages.append("  ✅ Attribute namespaces OK")
 
                 # Check relationships consistency
                 if 'word/_rels/document.xml.rels' in zip_entries:

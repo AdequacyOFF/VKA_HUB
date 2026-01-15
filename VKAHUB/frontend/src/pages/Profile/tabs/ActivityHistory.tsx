@@ -11,6 +11,7 @@ import { VTBCard } from '../../../components/common/VTBCard';
 import { api } from '../../../api';
 import { useAuthStore } from '../../../store/authStore';
 import dayjs from 'dayjs';
+import { queryKeys } from '../../../api/queryKeys';
 
 interface ActivityLog {
   id: number;
@@ -57,7 +58,7 @@ export function ActivityHistory() {
   const user = useAuthStore((state) => state.user);
 
   const { data: activities = [], isLoading } = useQuery<ActivityLog[]>({
-    queryKey: ['activity-history', user?.id],
+    queryKey: queryKeys.users.activity(user?.id),
     queryFn: async () => {
       const response = await api.get('/api/users/activity-history');
       return response.data;

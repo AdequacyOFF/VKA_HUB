@@ -1,12 +1,14 @@
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Container, Title, Textarea, Stack, Box, Text, Group, Select } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
 import { IconAlertTriangle, IconArrowLeft, IconUser, IconSend } from '@tabler/icons-react';
 import { VTBCard } from '../../components/common/VTBCard';
 import { VTBButton } from '../../components/common/VTBButton';
 import { complaintsApi, usersApi } from '../../api';
+import { queryKeys } from '../../api/queryKeys';
+import { invalidateComplaintQueries } from '../../utils/cacheInvalidation';
 
 const COMPLAINT_REASONS = [
   { value: 'inappropriate_behavior', label: 'Неподобающее поведение' },
@@ -18,6 +20,7 @@ const COMPLAINT_REASONS = [
 
 export function CreateComplaint() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const preselectedUserId = searchParams.get('userId');
 
@@ -40,7 +43,7 @@ export function CreateComplaint() {
   });
 
   const { data: targetUser } = useQuery({
-    queryKey: ['user', preselectedUserId],
+    queryKey: queryKeys.users.detail(preselectedUserId!),
     queryFn: () => usersApi.getUser(Number(preselectedUserId)),
     enabled: !!preselectedUserId,
   });
@@ -48,6 +51,9 @@ export function CreateComplaint() {
   const createComplaintMutation = useMutation({
     mutationFn: complaintsApi.createComplaint,
     onSuccess: () => {
+      // Invalidate complaint queries to ensure lists are updated
+      invalidateComplaintQueries({ queryClient });
+
       notifications.show({
         title: 'Успех',
         message: 'Жалоба успешно отправлена на рассмотрение',

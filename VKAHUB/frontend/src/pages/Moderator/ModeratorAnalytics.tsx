@@ -6,6 +6,7 @@ import { VTBCard } from '../../components/common/VTBCard';
 import { VTBButton } from '../../components/common/VTBButton';
 import { IconFileAnalytics, IconDownload } from '@tabler/icons-react';
 import { moderatorApi, api } from '../../api';
+import { queryKeys } from '../../api/queryKeys';
 import { AnalyticsData } from '../../types';
 import { notifications } from '@mantine/notifications';
 
@@ -16,7 +17,7 @@ export function ModeratorAnalytics() {
   const [exporting, setExporting] = useState(false);
 
   const { data: analytics, isLoading, error } = useQuery<AnalyticsData>({
-    queryKey: ['moderator-analytics'],
+    queryKey: queryKeys.moderator.analytics(),
     queryFn: async () => {
       const response = await moderatorApi.getAnalytics();
       return response;

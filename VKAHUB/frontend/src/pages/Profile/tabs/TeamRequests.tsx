@@ -3,6 +3,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
 import { VTBCard } from '../../../components/common/VTBCard';
 import { api } from '../../../api';
+import { queryKeys } from '../../../api/queryKeys';
+import { invalidateTeamQueries } from '../../../utils/cacheInvalidation';
 import { IconUserPlus, IconSend, IconCheck, IconX } from '@tabler/icons-react';
 
 interface TeamRequest {
@@ -37,7 +39,7 @@ export function TeamRequests() {
   const queryClient = useQueryClient();
 
   const { data, isLoading, error } = useQuery<TeamRequestsData>({
-    queryKey: ['team-requests'],
+    queryKey: queryKeys.users.teamRequests(),
     queryFn: async () => {
       const response = await api.get('/api/users/team-requests');
       return response.data;
@@ -49,8 +51,8 @@ export function TeamRequests() {
       return api.post(`/api/teams/${teamId}/join-requests/${requestId}/approve`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['team-requests'] });
-      queryClient.invalidateQueries({ queryKey: ['my-team'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.teamRequests() });
+      invalidateTeamQueries({ queryClient });
       notifications.show({
         title: 'Успех',
         message: 'Приглашение принято',
@@ -71,7 +73,7 @@ export function TeamRequests() {
       return api.post(`/api/teams/${teamId}/join-requests/${requestId}/reject`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['team-requests'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.teamRequests() });
       notifications.show({
         title: 'Успех',
         message: 'Приглашение отклонено',

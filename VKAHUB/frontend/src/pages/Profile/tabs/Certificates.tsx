@@ -10,6 +10,8 @@ import { FileUploader } from '../../../components/common/FileUploader';
 import { ConfirmModal } from '../../../components/common/ConfirmModal';
 import { certificatesApi, api } from '../../../api';
 import dayjs from 'dayjs';
+import { queryKeys } from '../../../api/queryKeys';
+import { invalidateCertificateQueries } from '../../../utils/cacheInvalidation';
 
 interface Certificate {
   id: number;
@@ -51,7 +53,7 @@ export function Certificates() {
   });
 
   const { data: certificates = [], isLoading, error } = useQuery({
-    queryKey: ['certificates'],
+    queryKey: queryKeys.certificates.all,
     queryFn: async () => {
       try {
         const response = await certificatesApi.getCertificates();
@@ -77,7 +79,7 @@ export function Certificates() {
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['certificates'] });
+      invalidateCertificateQueries({ queryClient });
       notifications.show({
         title: 'Успех',
         message: 'Сертификат добавлен',
@@ -98,7 +100,7 @@ export function Certificates() {
   const deleteMutation = useMutation({
     mutationFn: (id: number) => certificatesApi.deleteCertificate(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['certificates'] });
+      invalidateCertificateQueries({ queryClient });
       notifications.show({
         title: 'Успех',
         message: 'Сертификат удален',

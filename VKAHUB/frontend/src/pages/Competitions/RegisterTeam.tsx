@@ -18,7 +18,6 @@ import {
   Select,
   Avatar,
 } from '@mantine/core';
-import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { IconAlertCircle, IconUsers, IconTrophy } from '@tabler/icons-react';
 import { competitionsApi } from '../../api/competitions';
@@ -26,17 +25,20 @@ import { teamsApi } from '../../api/teams';
 import { Competition } from '../../types/competition';
 import { Team } from '../../types/team';
 import { useAuthStore } from '../../store/authStore';
+import { useApplyToCompetition } from '../../api/mutations/competitionMutations';
 
 export default function RegisterTeam() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
   const [competition, setCompetition] = useState<Competition | null>(null);
   const [teams, setTeams] = useState<Team[]>([]);
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
   const [selectedMembers, setSelectedMembers] = useState<number[]>([]);
+
+  // Use centralized mutation hook with proper cache invalidation
+  const applyMutation = useApplyToCompetition(parseInt(id || '0'));
 
   useEffect(() => {
     const fetchData = async () => {
@@ -54,8 +56,8 @@ export default function RegisterTeam() {
         setTeams(captainTeams);
       } catch (error: any) {
         notifications.show({
-          title: 'Error',
-          message: error.response?.data?.detail || 'Failed to load data',
+          title: 'Ошибка',
+          message: error.response?.data?.detail || 'Не удалось загрузить данные',
           color: 'red',
         });
       } finally {
@@ -87,7 +89,7 @@ export default function RegisterTeam() {
     );
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     if (!selectedTeam || !competition) return;
 
     // Validate team size
@@ -96,36 +98,36 @@ export default function RegisterTeam() {
       selectedMembers.length > competition.max_team_size
     ) {
       notifications.show({
-        title: 'Invalid Team Size',
-        message: `You must select between ${competition.min_team_size} and ${competition.max_team_size} team members`,
+        title: 'Неверный размер команды',
+        message: `Необходимо выбрать от ${competition.min_team_size} до ${competition.max_team_size} участников`,
         color: 'red',
       });
       return;
     }
 
-    setSubmitting(true);
-    try {
-      await competitionsApi.applyToCompetition(parseInt(id!), {
+    applyMutation.mutate(
+      {
         team_id: selectedTeam.id,
         member_ids: selectedMembers,
-      });
-
-      notifications.show({
-        title: 'Success',
-        message: 'Team registered successfully!',
-        color: 'green',
-      });
-
-      navigate(`/competitions/${id}`);
-    } catch (error: any) {
-      notifications.show({
-        title: 'Error',
-        message: error.response?.data?.detail || 'Failed to register team',
-        color: 'red',
-      });
-    } finally {
-      setSubmitting(false);
-    }
+      },
+      {
+        onSuccess: () => {
+          notifications.show({
+            title: 'Успех',
+            message: 'Команда успешно зарегистрирована!',
+            color: 'green',
+          });
+          navigate(`/competitions/${id}`);
+        },
+        onError: (error: any) => {
+          notifications.show({
+            title: 'Ошибка',
+            message: error.response?.data?.detail || 'Не удалось зарегистрировать команду',
+            color: 'red',
+          });
+        },
+      }
+    );
   };
 
   if (loading) {
@@ -139,8 +141,8 @@ export default function RegisterTeam() {
   if (!competition) {
     return (
       <Container size="md" py="xl">
-        <Alert icon={<IconAlertCircle />} title="Error" color="red">
-          Competition not found
+        <Alert icon={<IconAlertCircle />} title="Ошибка" color="red">
+          Соревнование не найдено
         </Alert>
       </Container>
     );
@@ -152,12 +154,12 @@ export default function RegisterTeam() {
         <Paper shadow="sm" p="xl" withBorder>
           <Stack gap="md" align="center">
             <IconUsers size={48} color="gray" />
-            <Title order={3}>No Teams Available</Title>
+            <Title order={3}>Нет доступных команд</Title>
             <Text c="dimmed" ta="center">
-              You need to be a team captain to register for competitions. Create a team or ask your current
-              team captain to register.
+              Вы должны быть капитаном команды, чтобы зарегистрировать её на соревнование.
+              Создайте команду или попросите капитана вашей команды зарегистрировать её.
             </Text>
-            <Button onClick={() => navigate('/teams/create')}>Create Team</Button>
+            <Button onClick={() => navigate('/teams/create')}>Создать команду</Button>
           </Stack>
         </Paper>
       </Container>
@@ -169,8 +171,8 @@ export default function RegisterTeam() {
   if (!registrationOpen) {
     return (
       <Container size="md" py="xl">
-        <Alert icon={<IconAlertCircle />} title="Registration Closed" color="yellow">
-          Registration for this competition has closed.
+        <Alert icon={<IconAlertCircle />} title="Регистрация закрыта" color="yellow">
+          Регистрация на это соревнование закрыта.
         </Alert>
       </Container>
     );
@@ -188,7 +190,7 @@ export default function RegisterTeam() {
               <Group gap="xs" mt="xs">
                 <Badge color="blue">{competition.type.toUpperCase()}</Badge>
                 <Text size="sm" c="dimmed">
-                  Team Size: {competition.min_team_size}-{competition.max_team_size} members
+                  Размер команды: {competition.min_team_size}-{competition.max_team_size} участников
                 </Text>
               </Group>
             </div>
@@ -198,15 +200,15 @@ export default function RegisterTeam() {
         {/* Team Selection */}
         <Paper shadow="sm" p="lg" withBorder>
           <Title order={3} mb="md">
-            Select Your Team
+            Выберите команду
           </Title>
 
           <Select
-            label="Team"
-            placeholder="Choose a team to register"
+            label="Команда"
+            placeholder="Выберите команду для регистрации"
             data={teams.map((team) => ({
               value: team.id.toString(),
-              label: `${team.name} (${team.members?.length || 0} members)`,
+              label: `${team.name} (${team.members?.length || 0} участников)`,
             }))}
             value={selectedTeam?.id.toString() || null}
             onChange={handleTeamSelect}
@@ -221,15 +223,15 @@ export default function RegisterTeam() {
             <Stack gap="md">
               <div>
                 <Group justify="space-between" mb="md">
-                  <Title order={3}>Select Team Members</Title>
+                  <Title order={3}>Выберите участников</Title>
                   <Badge size="lg" color={selectedMembers.length >= competition.min_team_size && selectedMembers.length <= competition.max_team_size ? 'green' : 'red'}>
-                    {selectedMembers.length} / {competition.min_team_size}-{competition.max_team_size} selected
+                    {selectedMembers.length} / {competition.min_team_size}-{competition.max_team_size} выбрано
                   </Badge>
                 </Group>
 
                 <Alert icon={<IconAlertCircle />} color="blue" mb="md">
-                  Select between {competition.min_team_size} and {competition.max_team_size} team members to
-                  participate in this competition.
+                  Выберите от {competition.min_team_size} до {competition.max_team_size} участников команды
+                  для участия в этом соревновании.
                 </Alert>
               </div>
 
@@ -257,7 +259,7 @@ export default function RegisterTeam() {
                             </Text>
                             {member.user_id === selectedTeam.captain_id && (
                               <Badge size="sm" color="gold">
-                                Captain
+                                Капитан
                               </Badge>
                             )}
                           </div>
@@ -276,7 +278,7 @@ export default function RegisterTeam() {
                   ))
                 ) : (
                   <Text c="dimmed" ta="center">
-                    No team members found
+                    Участники не найдены
                   </Text>
                 )}
               </Stack>
@@ -285,11 +287,11 @@ export default function RegisterTeam() {
 
               <Group justify="space-between">
                 <Button variant="default" onClick={() => navigate(`/competitions/${id}`)}>
-                  Cancel
+                  Отмена
                 </Button>
                 <Button
                   onClick={handleSubmit}
-                  loading={submitting}
+                  loading={applyMutation.isPending}
                   disabled={
                     !selectedTeam ||
                     selectedMembers.length < competition.min_team_size ||
@@ -297,7 +299,7 @@ export default function RegisterTeam() {
                   }
                   leftSection={<IconTrophy size={18} />}
                 >
-                  Register Team
+                  Зарегистрировать команду
                 </Button>
               </Group>
             </Stack>

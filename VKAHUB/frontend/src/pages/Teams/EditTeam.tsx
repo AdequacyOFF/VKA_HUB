@@ -20,6 +20,7 @@ import { VTBCard } from '../../components/common/VTBCard';
 import { VTBButton } from '../../components/common/VTBButton';
 import { AvatarUploader } from '../../components/common/AvatarUploader';
 import { teamsApi, api } from '../../api';
+import { queryKeys } from '../../api/queryKeys';
 import { Team } from '../../types';
 import { invalidateTeamQueries } from '../../utils/cacheInvalidation';
 
@@ -32,7 +33,7 @@ export function EditTeam() {
   const [isCustomDirection, setIsCustomDirection] = useState(false);
 
   const { data: team, isLoading } = useQuery<Team>({
-    queryKey: ['team', teamId],
+    queryKey: queryKeys.teams.detail(teamId),
     queryFn: () => teamsApi.getTeam(teamId),
     enabled: !!id && !isNaN(teamId),
   });

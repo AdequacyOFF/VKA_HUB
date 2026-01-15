@@ -7,9 +7,10 @@ import { VTBCard } from '../../components/common/VTBCard';
 import { VTBButton } from '../../components/common/VTBButton';
 import { notifications } from '@mantine/notifications';
 import { competitionsApi, api } from '../../api';
+import { queryKeys } from '../../api/queryKeys';
 import { Competition } from '../../types';
 import dayjs from 'dayjs';
-import { invalidateCompetitionQueries } from '../../utils/cacheInvalidation';
+import { invalidateCompetitionQueries, invalidateModeratorQueries } from '../../utils/cacheInvalidation';
 
 interface CompetitionReport {
   id: number;
@@ -29,7 +30,7 @@ export function ModeratorCompetitions() {
   const [reportsModalOpened, setReportsModalOpened] = useState(false);
 
   const { data: competitions, isLoading, error } = useQuery<Competition[]>({
-    queryKey: ['moderator-competitions'],
+    queryKey: queryKeys.moderator.competitions(),
     queryFn: async () => {
       try {
         const response = await competitionsApi.getCompetitions({ limit: 100 });
@@ -42,7 +43,7 @@ export function ModeratorCompetitions() {
   });
 
   const { data: competitionReports, isLoading: reportsLoading } = useQuery<{ reports: CompetitionReport[], competition_name: string }>({
-    queryKey: ['competition-reports', selectedCompId],
+    queryKey: queryKeys.competitions.reports(selectedCompId!),
     queryFn: async () => {
       if (!selectedCompId) return { reports: [], competition_name: '' };
       const response = await api.get(`/api/competitions/${selectedCompId}/reports`);
@@ -55,7 +56,7 @@ export function ModeratorCompetitions() {
     mutationFn: (id: number) => api.delete(`/api/competitions/${id}`),
     onSuccess: () => {
       // Invalidate both moderator view and public competitions list
-      queryClient.invalidateQueries({ queryKey: ['moderator-competitions'] });
+      invalidateModeratorQueries({ queryClient });
       invalidateCompetitionQueries({ queryClient });
 
       notifications.show({ title: 'Успех', message: 'Соревнование удалено', color: 'teal' });

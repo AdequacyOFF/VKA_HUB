@@ -6,6 +6,8 @@ import { VTBCard } from '../../components/common/VTBCard';
 import { VTBButton } from '../../components/common/VTBButton';
 import { notifications } from '@mantine/notifications';
 import { moderatorApi } from '../../api/moderator';
+import { queryKeys } from '../../api/queryKeys';
+import { invalidateComplaintQueries } from '../../utils/cacheInvalidation';
 import { PlatformComplaintResponse } from '../../api/platformComplaints';
 import dayjs from 'dayjs';
 import { useForm } from '@mantine/form';
@@ -46,7 +48,7 @@ export function ModeratorPlatformComplaints() {
   const [respondModalOpened, setRespondModalOpened] = useState(false);
 
   const { data: complaintsData, isLoading, error } = useQuery({
-    queryKey: ['moderator-platform-complaints'],
+    queryKey: queryKeys.moderator.platformComplaints(),
     queryFn: async () => {
       try {
         return await moderatorApi.getPlatformComplaints();
@@ -78,7 +80,7 @@ export function ModeratorPlatformComplaints() {
         status: data.status,
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['moderator-platform-complaints'] });
+      invalidateComplaintQueries({ queryClient });
       notifications.show({ title: 'Успех', message: 'Ответ отправлен', color: 'teal' });
       setRespondModalOpened(false);
       setModalOpened(false);

@@ -6,6 +6,7 @@ import { api } from '../../../api';
 import { useAuthStore } from '../../../store/authStore';
 import dayjs from 'dayjs';
 import { useNavigate } from 'react-router-dom';
+import { queryKeys } from '../../../api/queryKeys';
 
 interface CompetitionParticipation {
   id: number;
@@ -24,7 +25,7 @@ export function CompetitionParticipation() {
   const navigate = useNavigate();
 
   const { data: participations = [], isLoading } = useQuery<CompetitionParticipation[]>({
-    queryKey: ['competition-participations', user?.id],
+    queryKey: queryKeys.competitions.participations(user?.id),
     queryFn: async () => {
       const response = await api.get('/api/users/competition-participations');
       return response.data;

@@ -11,6 +11,172 @@ from typing import List, Dict, Any
 from xml.etree import ElementTree as ET
 
 
+# Regex pattern for illegal XML 1.0 control characters
+# Illegal: 0x00-0x08, 0x0B, 0x0C, 0x0E-0x1F
+# Legal whitespace: 0x09 (tab), 0x0A (newline), 0x0D (carriage return)
+_ILLEGAL_XML_CHARS_RE = re.compile(r'[\x00-\x08\x0b\x0c\x0e-\x1f]')
+
+# XML namespace for xml:space attribute
+_XML_NS = 'http://schemas.openxmlformats.org/XML/1998/namespace'
+_XML_SPACE_ATTR = f'{{{_XML_NS}}}space'
+
+# Wordprocessingml namespace - attributes on w: elements need this prefix
+_W_NS = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'
+
+# Pattern to detect duplicate xml:space attributes (the root cause of Word repair prompt)
+# This happens when ElementTree doesn't recognize xml: prefix and adds ns#: prefixed duplicate
+_DUPLICATE_SPACE_ATTR_RE = re.compile(
+    r'(\s+)((?:xml|ns\d+):space="[^"]*")(\s+)((?:xml|ns\d+):space="[^"]*")'
+)
+
+# Pattern to fix namespace prefixes in serialized XML
+# ElementTree uses ns0, ns1, etc. instead of proper OOXML prefixes
+_NS_FIXUP_PATTERNS = [
+    # Fix Content_Types namespace prefix
+    (re.compile(r'<ns\d+:Types\s'), '<Types '),
+    (re.compile(r'</ns\d+:Types>'), '</Types>'),
+    (re.compile(r'<ns\d+:Default\s'), '<Default '),
+    (re.compile(r'<ns\d+:Override\s'), '<Override '),
+    # Fix xml:space attribute that got ns# prefix
+    (re.compile(r'\bns\d+:space="preserve"'), 'xml:space="preserve"'),
+]
+
+# Attributes that need w: prefix when on w: elements
+# These are defined in the OOXML schema as namespace-qualified
+_W_ATTRS = {'ascii', 'hAnsi', 'cs', 'eastAsia', 'val'}
+
+# Pattern to fix missing w: prefix on attributes
+# Match: space + attribute="value" where attribute is one that needs w: prefix
+# Uses negative lookbehind to ensure the attribute doesn't already have a prefix (w: or ns#:)
+# The (?<![:\w]) ensures we don't match if preceded by : or word char (which would indicate existing prefix)
+_ATTR_FIXUP_PATTERN = re.compile(
+    r'(?<![:\w])(ascii|hAnsi|cs|eastAsia|val)="([^"]*)"'
+)
+
+
+def sanitize_xml_text(text: str) -> str:
+    """
+    Remove illegal XML 1.0 control characters from text.
+
+    OOXML (Office Open XML) is based on XML 1.0, which forbids certain
+    control characters. If these appear in text content, Word will
+    detect "unreadable content" and trigger a repair prompt.
+
+    Illegal characters (removed):
+        - 0x00-0x08: NULL through BACKSPACE
+        - 0x0B: Vertical tab
+        - 0x0C: Form feed
+        - 0x0E-0x1F: Shift out through unit separator
+
+    Legal whitespace (preserved):
+        - 0x09: Tab
+        - 0x0A: Line feed (newline)
+        - 0x0D: Carriage return
+
+    Args:
+        text: Input text that may contain control characters
+
+    Returns:
+        Sanitized text with illegal characters removed
+    """
+    if text is None:
+        return ""
+    if not isinstance(text, str):
+        text = str(text)
+    return _ILLEGAL_XML_CHARS_RE.sub('', text)
+
+
+def _set_xml_space_preserve(elem: ET.Element) -> None:
+    """
+    Safely set xml:space="preserve" on an element.
+
+    This function checks if the attribute already exists (in any namespace form)
+    before setting it, to avoid creating duplicate attributes which causes
+    Word to show "unreadable content" repair prompts.
+
+    The root cause of the DOCX corruption was:
+    - Template elements have xml:space="preserve"
+    - ElementTree doesn't recognize xml: as a special prefix
+    - When we call elem.set('{xml-ns}space', 'preserve'), ET adds a DUPLICATE
+      attribute with ns#:space prefix
+    - Duplicate attributes are invalid XML and trigger Word repair
+
+    Args:
+        elem: The XML element to set the attribute on
+    """
+    # Check if xml:space is already set (in any form)
+    # ElementTree may represent it as {namespace}space or just 'space' with xml: prefix
+    existing_attrs = elem.attrib
+
+    # Check for the namespaced form
+    if _XML_SPACE_ATTR in existing_attrs:
+        return  # Already set with namespace
+
+    # Check for any space attribute (may be present without namespace in attrib dict
+    # but serialized with xml: prefix)
+    for attr_name in existing_attrs:
+        if attr_name.endswith('}space') or attr_name == 'space':
+            return  # Already has some form of space attribute
+
+    # Safe to add - no existing space attribute
+    elem.set(_XML_SPACE_ATTR, 'preserve')
+
+
+def _fix_xml_serialization(xml_bytes: bytes) -> bytes:
+    """
+    Fix XML serialization issues caused by ElementTree's namespace handling.
+
+    ElementTree has several quirks when serializing OOXML:
+    1. It uses auto-generated ns0/ns1/ns2 prefixes instead of original prefixes
+    2. It may create duplicate attributes when xml: namespace is involved
+    3. It doesn't add w: prefix to attributes on w: elements (causes Word repair)
+    4. It doesn't preserve the original namespace prefix declarations
+
+    This post-processing step fixes these issues to produce Word-compatible XML.
+
+    ROOT CAUSE FIX: Attributes like ascii, hAnsi, cs, val on w:rFonts, w:sz elements
+    need the w: namespace prefix. Without it, Word shows "unreadable content" error.
+
+    Args:
+        xml_bytes: Raw XML bytes from ElementTree.tostring()
+
+    Returns:
+        Fixed XML bytes that won't trigger Word repair prompts
+    """
+    xml_str = xml_bytes.decode('utf-8')
+
+    # Fix 1: Remove duplicate space attributes (critical - causes repair prompt)
+    # Pattern matches: space="preserve" ns3:space="preserve" (or any ns# variant)
+    # Keep only the first occurrence
+    while True:
+        match = _DUPLICATE_SPACE_ATTR_RE.search(xml_str)
+        if not match:
+            break
+        # Remove the second (duplicate) space attribute
+        xml_str = xml_str[:match.start(3)] + xml_str[match.end(4):]
+
+    # Fix 2: Convert ns#:space="preserve" to xml:space="preserve"
+    for pattern, replacement in _NS_FIXUP_PATTERNS:
+        xml_str = pattern.sub(replacement, xml_str)
+
+    # Fix 3: Add w: prefix to OOXML attributes that need it
+    # This is critical: attributes like ascii, hAnsi, cs, val on w: elements
+    # MUST have the w: prefix or Word will show "unreadable content" repair prompt
+    #
+    # Before: <w:rFonts ascii="Times New Roman" hAnsi="Times New Roman" />
+    # After:  <w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" />
+    #
+    # We only add the prefix if the attribute doesn't already have one (no colon)
+    def add_w_prefix(match):
+        attr_name = match.group(1)
+        attr_value = match.group(2)
+        return f'w:{attr_name}="{attr_value}"'
+
+    xml_str = _ATTR_FIXUP_PATTERN.sub(add_w_prefix, xml_str)
+
+    return xml_str.encode('utf-8')
+
+
 def sanitize_filename(filename: str, max_length: int = 150) -> str:
     """
     Sanitize filename for Windows/Unix compatibility
@@ -115,8 +281,10 @@ class TemplateReportGenerator:
 
         # Serialize document.xml with proper XML declaration
         # Use method='xml' to ensure proper XML format
-        file_dict['word/document.xml'] = b'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' + \
-            ET.tostring(root, encoding='utf-8', method='xml')
+        raw_xml = ET.tostring(root, encoding='utf-8', method='xml')
+        # Fix ElementTree serialization issues (duplicate attributes, ns# prefixes)
+        fixed_xml = _fix_xml_serialization(raw_xml)
+        file_dict['word/document.xml'] = b'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' + fixed_xml
 
         # Create new DOCX in memory (exclude images/media)
         output = io.BytesIO()
@@ -386,15 +554,15 @@ class TemplateReportGenerator:
             first_run = runs[0]
             t_elem = first_run.find('.//w:t', self.NAMESPACES)
             if t_elem is not None:
-                t_elem.text = replacement
-                t_elem.set('{http://schemas.openxmlformats.org/XML/1998/namespace}space', 'preserve')
+                t_elem.text = sanitize_xml_text(replacement)
+                _set_xml_space_preserve(t_elem)
 
     def _replace_text_in_runs(self, root: ET.Element, old_text: str, new_text: str):
         """Replace all occurrences of text in runs"""
 
         for t_elem in root.findall('.//w:t', self.NAMESPACES):
             if t_elem.text and old_text in t_elem.text:
-                t_elem.text = t_elem.text.replace(old_text, new_text)
+                t_elem.text = sanitize_xml_text(t_elem.text.replace(old_text, new_text))
 
     def _remove_images(self, root: ET.Element) -> set:
         """
@@ -474,9 +642,10 @@ class TemplateReportGenerator:
                 if rel_id in rel_ids_to_remove:
                     rels_root.remove(rel)
 
-            # Serialize with proper XML declaration
-            return b'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' + \
-                ET.tostring(rels_root, encoding='utf-8', method='xml')
+            # Serialize with proper XML declaration and fix namespace prefixes
+            raw_xml = ET.tostring(rels_root, encoding='utf-8', method='xml')
+            fixed_xml = _fix_xml_serialization(raw_xml)
+            return b'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' + fixed_xml
 
         except Exception as e:
             # If parsing fails, return original
@@ -502,9 +671,10 @@ class TemplateReportGenerator:
                 if part_name and '/media/' in part_name:
                     ct_root.remove(override)
 
-            # Serialize with proper XML declaration
-            return b'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' + \
-                ET.tostring(ct_root, encoding='utf-8', method='xml')
+            # Serialize with proper XML declaration and fix namespace prefixes
+            raw_xml = ET.tostring(ct_root, encoding='utf-8', method='xml')
+            fixed_xml = _fix_xml_serialization(raw_xml)
+            return b'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' + fixed_xml
 
         except Exception as e:
             # If parsing fails, return original
@@ -529,16 +699,18 @@ class TemplateReportGenerator:
                     rPr.remove(elem)
 
             # Add Times New Roman font
+            # Note: Attributes like 'ascii', 'hAnsi', 'cs' are NOT namespace-qualified in OOXML
             rFonts = ET.SubElement(rPr, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}rFonts')
-            rFonts.set('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}ascii', 'Times New Roman')
-            rFonts.set('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}hAnsi', 'Times New Roman')
-            rFonts.set('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}cs', 'Times New Roman')
+            rFonts.set('ascii', 'Times New Roman')
+            rFonts.set('hAnsi', 'Times New Roman')
+            rFonts.set('cs', 'Times New Roman')
 
             # Add font size 13pt (26 half-points)
+            # Note: 'val' attribute is NOT namespace-qualified in OOXML
             sz = ET.SubElement(rPr, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}sz')
-            sz.set('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}val', '26')
+            sz.set('val', '26')
             szCs = ET.SubElement(rPr, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}szCs')
-            szCs.set('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}val', '26')
+            szCs.set('val', '26')
 
     def _clone_paragraph_with_text(self, template_para: ET.Element, text: str) -> ET.Element:
         """Clone a paragraph's formatting and set new text"""
@@ -551,8 +723,8 @@ class TemplateReportGenerator:
             # Use first run
             t_elem = runs[0].find('.//w:t', self.NAMESPACES)
             if t_elem is not None:
-                t_elem.text = text
-                t_elem.set('{http://schemas.openxmlformats.org/XML/1998/namespace}space', 'preserve')
+                t_elem.text = sanitize_xml_text(text)
+                _set_xml_space_preserve(t_elem)
 
             # Remove text from other runs
             for run in runs[1:]:
@@ -566,8 +738,8 @@ class TemplateReportGenerator:
         para = ET.Element('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}p')
         run = ET.SubElement(para, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}r')
         t = ET.SubElement(run, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}t')
-        t.text = text
-        t.set('{http://schemas.openxmlformats.org/XML/1998/namespace}space', 'preserve')
+        t.text = sanitize_xml_text(text)
+        _set_xml_space_preserve(t)
         return para
 
     def _create_paragraph_with_formatting(self, text: str, font_name: str = None, font_size: int = None) -> ET.Element:
@@ -588,21 +760,23 @@ class TemplateReportGenerator:
 
             if font_name:
                 # Add font family
+                # Note: Attributes like 'ascii', 'hAnsi', 'cs' are NOT namespace-qualified in OOXML
                 rFonts = ET.SubElement(rPr, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}rFonts')
-                rFonts.set('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}ascii', font_name)
-                rFonts.set('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}hAnsi', font_name)
-                rFonts.set('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}cs', font_name)
+                rFonts.set('ascii', font_name)
+                rFonts.set('hAnsi', font_name)
+                rFonts.set('cs', font_name)
 
             if font_size:
                 # Add font size (in half-points)
+                # Note: 'val' attribute is NOT namespace-qualified in OOXML
                 sz = ET.SubElement(rPr, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}sz')
-                sz.set('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}val', str(font_size))
+                sz.set('val', str(font_size))
                 szCs = ET.SubElement(rPr, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}szCs')
-                szCs.set('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}val', str(font_size))
+                szCs.set('val', str(font_size))
 
         # Add text
         t = ET.SubElement(run, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}t')
-        t.text = text
-        t.set('{http://schemas.openxmlformats.org/XML/1998/namespace}space', 'preserve')
+        t.text = sanitize_xml_text(text)
+        _set_xml_space_preserve(t)
 
         return para

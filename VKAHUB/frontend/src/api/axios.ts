@@ -1,9 +1,10 @@
 import axios from 'axios';
 import { useAuthStore } from '@/store';
 
-// In production (Docker/NGINX), use empty string to make requests relative
-// In development, use VITE_API_URL or fallback to empty string (Vite proxy handles /api)
-const API_URL = import.meta.env.VITE_API_URL || '';
+// Always use empty string for baseURL - requests go to the same origin
+// In development: Vite proxy handles /api and /static routes
+// In production: NGINX proxies /api and /static to backend
+const API_URL = '';
 
 export const axiosInstance = axios.create({
   baseURL: API_URL,

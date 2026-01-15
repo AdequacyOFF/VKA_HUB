@@ -26,6 +26,7 @@ import { useAuthStore } from '../../store/authStore';
 import { Competition } from '../../types';
 import dayjs from 'dayjs';
 import { invalidateCompetitionQueries } from '../../utils/cacheInvalidation';
+import { queryKeys } from '../../api/queryKeys';
 
 export function CompetitionDetail() {
   const { id } = useParams();
@@ -37,7 +38,7 @@ export function CompetitionDetail() {
   const [teamToRemove, setTeamToRemove] = useState<any>(null);
 
   const { data: competition, isLoading } = useQuery<Competition>({
-    queryKey: ['competition', id],
+    queryKey: queryKeys.competitions.detail(id!),
     queryFn: async () => {
       const response = await competitionsApi.getCompetition(Number(id));
       return response;
@@ -46,7 +47,7 @@ export function CompetitionDetail() {
   });
 
   const { data: registrationsData } = useQuery({
-    queryKey: ['competition-registrations', id],
+    queryKey: queryKeys.competitions.registrations(id!),
     queryFn: async () => {
       const response = await competitionsApi.getCompetitionRegistrations(Number(id));
       return response;

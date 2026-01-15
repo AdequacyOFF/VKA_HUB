@@ -5,6 +5,7 @@ import { IconUser, IconCertificate, IconBriefcase, IconTrophy, IconFlag } from '
 import { VTBCard } from '../../components/common/VTBCard';
 import { VTBButton } from '../../components/common/VTBButton';
 import { usersApi } from '../../api';
+import { queryKeys } from '../../api/queryKeys';
 import { useAuthStore } from '../../store/authStore';
 import { User } from '../../types';
 import dayjs from 'dayjs';
@@ -15,7 +16,7 @@ export function UserDetail() {
   const { user: currentUser } = useAuthStore();
 
   const { data: user, isLoading, error } = useQuery<User>({
-    queryKey: ['user', id],
+    queryKey: queryKeys.users.detail(id!),
     queryFn: async () => {
       if (!id) throw new Error('User ID is required');
       return await usersApi.getUser(Number(id));

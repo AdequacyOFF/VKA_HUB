@@ -6,6 +6,8 @@ import { VTBCard } from '../../components/common/VTBCard';
 import { VTBButton } from '../../components/common/VTBButton';
 import { notifications } from '@mantine/notifications';
 import { api } from '../../api';
+import { queryKeys } from '../../api/queryKeys';
+import { invalidateComplaintQueries } from '../../utils/cacheInvalidation';
 import { UserComplaint } from '../../types';
 import dayjs from 'dayjs';
 
@@ -15,7 +17,7 @@ export function ModeratorReports() {
   const [modalOpened, setModalOpened] = useState(false);
 
   const { data: reports, isLoading, error } = useQuery<UserComplaint[]>({
-    queryKey: ['moderator-reports'],
+    queryKey: queryKeys.moderator.reports(),
     queryFn: async () => {
       try {
         const response = await api.get('/api/moderator/reports');
@@ -32,7 +34,7 @@ export function ModeratorReports() {
     mutationFn: ({ id, action }: { id: number; action: 'approve' | 'reject' }) =>
       api.post(`/api/moderator/reports/${id}/${action}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['moderator-reports'] });
+      invalidateComplaintQueries({ queryClient });
       notifications.show({ title: 'Успех', message: 'Жалоба рассмотрена', color: 'teal' });
       setModalOpened(false);
     },

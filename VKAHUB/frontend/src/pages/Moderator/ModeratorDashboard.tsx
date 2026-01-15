@@ -13,6 +13,7 @@ import {
 } from '@tabler/icons-react';
 import { VTBCard } from '../../components/common/VTBCard';
 import { moderatorApi } from '../../api/moderator';
+import { queryKeys } from '../../api/queryKeys';
 
 interface PlatformStats {
   totalUsers: number;
@@ -33,7 +34,7 @@ interface PlatformStats {
 
 export function ModeratorDashboard() {
   const { data: stats, isLoading } = useQuery<PlatformStats>({
-    queryKey: ['moderator-stats'],
+    queryKey: queryKeys.moderator.stats(),
     queryFn: async () => {
       const response = await moderatorApi.getStats();
       return {

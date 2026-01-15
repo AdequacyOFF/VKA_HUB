@@ -1,12 +1,13 @@
 import { useNavigate } from 'react-router-dom';
 import { Container, Title, Textarea, Stack, Box, Text, Group, Select, TextInput } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
 import { IconMessageReport, IconArrowLeft, IconSend, IconCategory, IconAlertTriangle } from '@tabler/icons-react';
 import { VTBCard } from '../../components/common/VTBCard';
 import { VTBButton } from '../../components/common/VTBButton';
 import { platformComplaintsApi, PlatformComplaintCategory, ComplaintPriority } from '../../api/platformComplaints';
+import { invalidateComplaintQueries } from '../../utils/cacheInvalidation';
 
 const COMPLAINT_CATEGORIES = [
   { value: 'bug', label: 'Ошибка / Баг' },
@@ -26,6 +27,7 @@ const PRIORITY_OPTIONS = [
 
 export function CreatePlatformComplaint() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const form = useForm({
     initialValues: {
@@ -55,6 +57,9 @@ export function CreatePlatformComplaint() {
   const createComplaintMutation = useMutation({
     mutationFn: platformComplaintsApi.createComplaint,
     onSuccess: () => {
+      // Invalidate complaint queries to ensure lists are updated
+      invalidateComplaintQueries({ queryClient });
+
       notifications.show({
         title: 'Успех',
         message: 'Ваше обращение успешно отправлено. Спасибо за ваш отзыв!',

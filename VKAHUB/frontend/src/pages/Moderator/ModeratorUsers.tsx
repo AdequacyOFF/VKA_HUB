@@ -12,6 +12,8 @@ import { VTBCard } from '../../components/common/VTBCard';
 import { VTBButton } from '../../components/common/VTBButton';
 import { notifications } from '@mantine/notifications';
 import { usersApi, api, moderatorApi } from '../../api';  // ✅ Импортируем moderatorApi
+import { queryKeys } from '../../api/queryKeys';
+import { invalidateUserQueries, invalidateModeratorQueries } from '../../utils/cacheInvalidation';
 import { User } from '../../types';
 
 // ✅ Тип для информации о безопасности
@@ -45,7 +47,7 @@ export function ModeratorUsers() {
 
   // Получение пользователей
   const { data: users, isLoading, error } = useQuery<User[]>({
-    queryKey: ['moderator-users'],
+    queryKey: queryKeys.moderator.users(),
     queryFn: async () => {
       try {
         const response = await usersApi.getUsers({ limit: 100 });
@@ -104,11 +106,12 @@ export function ModeratorUsers() {
     mutationFn: ({ userId, login }: { userId: number; login: string }) =>
       api.patch(`/api/moderator/users/${userId}/login`, { login }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['moderator-users'] });
-      notifications.show({ 
-        title: 'Успех', 
-        message: 'Логин обновлен', 
-        color: 'teal' 
+      invalidateModeratorQueries({ queryClient });
+      invalidateUserQueries({ queryClient });
+      notifications.show({
+        title: 'Успех',
+        message: 'Логин обновлен',
+        color: 'teal'
       });
     },
     onError: (error: any) => {
@@ -172,8 +175,8 @@ export function ModeratorUsers() {
   const banMutation = useMutation({
     mutationFn: (userId: number) => api.post(`/api/moderator/users/${userId}/ban`),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['moderator-users'] });
-      await queryClient.refetchQueries({ queryKey: ['moderator-users'] });
+      invalidateModeratorQueries({ queryClient });
+      invalidateUserQueries({ queryClient });
       notifications.show({ title: 'Успех', message: 'Пользователь заблокирован', color: 'teal' });
     },
     onError: (error: any) => {
@@ -188,8 +191,8 @@ export function ModeratorUsers() {
   const unbanMutation = useMutation({
     mutationFn: (userId: number) => api.post(`/api/moderator/users/${userId}/unban`),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['moderator-users'] });
-      await queryClient.refetchQueries({ queryKey: ['moderator-users'] });
+      invalidateModeratorQueries({ queryClient });
+      invalidateUserQueries({ queryClient });
       notifications.show({ title: 'Успех', message: 'Пользователь разблокирован', color: 'teal' });
     },
     onError: (error: any) => {
@@ -269,7 +272,8 @@ export function ModeratorUsers() {
 
     Promise.all(promises)
       .then(() => {
-        queryClient.invalidateQueries({ queryKey: ['moderator-users'] });
+        invalidateModeratorQueries({ queryClient });
+        invalidateUserQueries({ queryClient });
         setEditMode(false);
         // Обновляем selectedUser чтобы показать новые данные
         setSelectedUser({

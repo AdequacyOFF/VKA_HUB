@@ -5,8 +5,9 @@ import { IconSearch, IconTrash, IconUsers } from '@tabler/icons-react';
 import { VTBCard } from '../../components/common/VTBCard';
 import { notifications } from '@mantine/notifications';
 import { teamsApi, api } from '../../api';
+import { queryKeys } from '../../api/queryKeys';
 import { Team } from '../../types';
-import { invalidateTeamQueries } from '../../utils/cacheInvalidation';
+import { invalidateTeamQueries, invalidateModeratorQueries } from '../../utils/cacheInvalidation';
 
 // Extended team type with moderator-specific fields
 interface TeamWithMetadata extends Team {
@@ -24,7 +25,7 @@ export function ModeratorTeams() {
   const [search, setSearch] = useState('');
 
   const { data: teams, isLoading, error } = useQuery<TeamWithMetadata[]>({
-    queryKey: ['moderator-teams'],
+    queryKey: queryKeys.moderator.teams(),
     queryFn: async () => {
       try {
         const response = await teamsApi.getTeams({ limit: 100 });
@@ -40,7 +41,7 @@ export function ModeratorTeams() {
     mutationFn: (teamId: number) => api.delete(`/api/moderator/teams/${teamId}`),
     onSuccess: () => {
       // Invalidate both moderator view and public teams list
-      queryClient.invalidateQueries({ queryKey: ['moderator-teams'] });
+      invalidateModeratorQueries({ queryClient });
       invalidateTeamQueries({ queryClient });
 
       notifications.show({ title: 'Успех', message: 'Команда удалена', color: 'teal' });
