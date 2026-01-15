@@ -35,7 +35,7 @@ class TeamJoinRequest(Base):
     # Relationships
     team = relationship("Team", back_populates="join_requests")
     user = relationship("User", foreign_keys=[user_id], back_populates="join_requests")
-    inviter = relationship("User", foreign_keys=[invited_by])
+    inviter = relationship("User", foreign_keys=[invited_by], overlaps="sent_invitations")
 
     def __repr__(self) -> str:
         return f"<TeamJoinRequest(id={self.id}, team_id={self.team_id}, user_id={self.user_id}, status={self.status})>"

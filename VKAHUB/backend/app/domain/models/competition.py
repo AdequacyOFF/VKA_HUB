@@ -21,7 +21,15 @@ class Competition(Base):
     __tablename__ = "competitions"
 
     id = Column(Integer, primary_key=True, index=True)
-    type = Column(Enum(CompetitionType, name="competitiontype", native_enum=True), nullable=False)
+    type = Column(
+        Enum(
+            CompetitionType,
+            name="competitiontype",
+            native_enum=True,
+            values_callable=lambda x: [e.value for e in x]
+        ),
+        nullable=False
+    )
     name = Column(String(255), nullable=False, index=True)
     link = Column(String(500))
     image_url = Column(String(500))

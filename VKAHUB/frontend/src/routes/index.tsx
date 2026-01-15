@@ -94,6 +94,7 @@ const router = createBrowserRouter(
       { path: 'users', element: <ModeratorUsers /> },
       { path: 'competitions', element: <ModeratorCompetitions /> },
       { path: 'competitions/create', element: <CreateCompetition /> },
+      { path: 'competitions/:id/edit', element: <CreateCompetition /> },
       { path: 'reports', element: <ModeratorReports /> },
       { path: 'platform-complaints', element: <ModeratorPlatformComplaints /> },
       { path: 'moderators', element: <ModeratorModerators /> },

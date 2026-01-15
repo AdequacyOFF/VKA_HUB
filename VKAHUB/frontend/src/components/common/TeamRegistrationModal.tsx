@@ -227,7 +227,7 @@ export function TeamRegistrationModal({
 
             <Textarea
               label="Адрес проведения"
-              placeholder="г. Санкт-Петербург, Лыжный пер., 4к3"
+              placeholder="г. Санкт-Петербург, ул. Пионерская, д.20, к.3"
               description="Укажите адрес, откуда команда будет участвовать в соревновании"
               value={address}
               onChange={(e) => setAddress(e.currentTarget.value)}

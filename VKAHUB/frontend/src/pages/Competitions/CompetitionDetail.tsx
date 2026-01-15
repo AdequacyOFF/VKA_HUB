@@ -16,7 +16,8 @@ import {
   IconCheck,
   IconCode,
   IconTrash,
-  IconDownload
+  IconDownload,
+  IconEdit
 } from '@tabler/icons-react';
 import { VTBCard } from '../../components/common/VTBCard';
 import { VTBButton } from '../../components/common/VTBButton';
@@ -226,9 +227,20 @@ export function CompetitionDetail() {
                     </Badge>
                   </Group>
 
-                  <Title order={1} c="white" mb="md">
-                    {competition.name}
-                  </Title>
+                  <Group justify="space-between" align="flex-start" mb="md">
+                    <Title order={1} c="white">
+                      {competition.name}
+                    </Title>
+                    {user?.is_moderator && (
+                      <VTBButton
+                        leftSection={<IconEdit size={18} />}
+                        variant="secondary"
+                        onClick={() => navigate(`/moderator/competitions/${competition.id}/edit`)}
+                      >
+                        Редактировать
+                      </VTBButton>
+                    )}
+                  </Group>
 
                   {competition.description && (
                     <Text c="dimmed" size="md">

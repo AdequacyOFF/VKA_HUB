@@ -121,6 +121,7 @@ async def create_competition(
 
     competition = await competition_repo.create(request_data)
     await db.commit()
+    await db.refresh(competition)
 
     return build_competition_response(competition)
 
@@ -170,6 +171,7 @@ async def update_competition(
         )
 
     await db.commit()
+    await db.refresh(competition)
     return build_competition_response(competition)
 
 

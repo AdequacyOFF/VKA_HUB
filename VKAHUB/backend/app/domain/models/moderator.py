@@ -19,7 +19,7 @@ class Moderator(Base):
 
     # Relationships
     user = relationship("User", foreign_keys=[user_id], back_populates="moderator")
-    assigner = relationship("User", foreign_keys=[assigned_by])
+    assigner = relationship("User", foreign_keys=[assigned_by], overlaps="assigned_moderators")
 
     def __repr__(self) -> str:
         return f"<Moderator(user_id={self.user_id})>"

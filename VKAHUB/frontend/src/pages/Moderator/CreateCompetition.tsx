@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Container,
   Paper,
@@ -14,13 +14,15 @@ import {
   Grid,
   Card,
   Badge,
+  Loader,
+  Center,
 } from '@mantine/core';
 import { DateInput, DateTimePicker } from '@mantine/dates';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { IconTrash, IconPlus } from '@tabler/icons-react';
-import { useNavigate } from 'react-router-dom';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate, useParams } from 'react-router-dom';
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { competitionsApi } from '../../api/competitions';
 import { VTBCard } from '../../components/common/VTBCard';
 import { ConsoleInput } from '../../components/common/ConsoleInput';
@@ -28,6 +30,8 @@ import { ConsoleTextarea } from '../../components/common/ConsoleTextarea';
 import { ConsoleSelect } from '../../components/common/ConsoleSelect';
 import { ConsoleMultiSelect } from '../../components/common/ConsoleMultiSelect';
 import { invalidateCompetitionQueries } from '../../utils/cacheInvalidation';
+import { Competition } from '../../types';
+import { queryKeys } from '../../api/queryKeys';
 
 interface Stage {
   stage_number: number;
@@ -56,9 +60,19 @@ const TECH_STACK_OPTIONS = [
 export default function CreateCompetition() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { id } = useParams<{ id: string }>();
+  const isEditMode = !!id;
   const [stages, setStages] = useState<Stage[]>([]);
   const [cases, setCases] = useState<Case[]>([]);
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [isInitialized, setIsInitialized] = useState(!isEditMode);
+
+  // Fetch existing competition data when in edit mode
+  const { data: existingCompetition, isLoading: isLoadingCompetition } = useQuery<Competition>({
+    queryKey: queryKeys.competitions.detail(id!),
+    queryFn: () => competitionsApi.getCompetition(Number(id)),
+    enabled: isEditMode,
+  });
 
   const form = useForm({
     initialValues: {
@@ -88,6 +102,49 @@ export default function CreateCompetition() {
         value < values.min_team_size ? 'Макс. размер команды должен быть >= мин.' : null,
     },
   });
+
+  // Populate form with existing data when editing
+  useEffect(() => {
+    if (isEditMode && existingCompetition && !isInitialized) {
+      form.setValues({
+        type: existingCompetition.type || '',
+        name: existingCompetition.name || '',
+        description: existingCompetition.description || '',
+        organizer: existingCompetition.organizer || '',
+        other_type_description: existingCompetition.other_type_description || '',
+        link: existingCompetition.link || '',
+        image_url: existingCompetition.image_url || '',
+        start_date: existingCompetition.start_date ? new Date(existingCompetition.start_date) : null,
+        end_date: existingCompetition.end_date ? new Date(existingCompetition.end_date) : null,
+        registration_deadline: existingCompetition.registration_deadline ? new Date(existingCompetition.registration_deadline) : null,
+        min_team_size: existingCompetition.min_team_size || 2,
+        max_team_size: existingCompetition.max_team_size || 5,
+      });
+
+      // Set stages
+      if (existingCompetition.stages && existingCompetition.stages.length > 0) {
+        setStages(existingCompetition.stages.map((stage: any) => ({
+          stage_number: stage.stage_number,
+          name: stage.name,
+          description: stage.description || '',
+          start_date: stage.start_date ? new Date(stage.start_date) : null,
+          end_date: stage.end_date ? new Date(stage.end_date) : null,
+        })));
+      }
+
+      // Set cases
+      if (existingCompetition.cases && existingCompetition.cases.length > 0) {
+        setCases(existingCompetition.cases.map((caseItem: any) => ({
+          case_number: caseItem.case_number,
+          title: caseItem.title,
+          description: caseItem.description,
+          knowledge_stack: caseItem.knowledge_stack || [],
+        })));
+      }
+
+      setIsInitialized(true);
+    }
+  }, [existingCompetition, isEditMode, isInitialized]);
 
   const addStage = () => {
     setStages([
@@ -161,6 +218,29 @@ export default function CreateCompetition() {
     },
   });
 
+  const updateCompetitionMutation = useMutation({
+    mutationFn: (competitionData: any) => competitionsApi.updateCompetition(Number(id), competitionData),
+    onSuccess: () => {
+      // Invalidate competitions list and detail
+      invalidateCompetitionQueries({ queryClient }, Number(id));
+
+      notifications.show({
+        title: 'Успешно',
+        message: 'Соревнование успешно обновлено',
+        color: 'green',
+      });
+
+      navigate('/moderator/competitions');
+    },
+    onError: (error: any) => {
+      notifications.show({
+        title: 'Ошибка',
+        message: error.response?.data?.detail || 'Не удалось обновить соревнование',
+        color: 'red',
+      });
+    },
+  });
+
   const handleSubmit = (values: typeof form.values) => {
     if (values.type === 'hackathon' && cases.length === 0) {
       notifications.show({
@@ -218,14 +298,29 @@ export default function CreateCompetition() {
       registration_deadline: values.registration_deadline!.toISOString(),
     };
 
-    createCompetitionMutation.mutate(competitionData);
+    if (isEditMode) {
+      updateCompetitionMutation.mutate(competitionData);
+    } else {
+      createCompetitionMutation.mutate(competitionData);
+    }
   };
+
+  // Show loading state when fetching existing competition data
+  if (isEditMode && isLoadingCompetition) {
+    return (
+      <Container size="lg" py="xl">
+        <Center h={400}>
+          <Loader size="xl" color="cyan" />
+        </Center>
+      </Container>
+    );
+  }
 
   return (
     <Container size="lg" py="xl">
       <Paper shadow="sm" p="xl" withBorder>
         <Title order={2} mb="lg">
-          Создание соревнования
+          {isEditMode ? 'Редактирование соревнования' : 'Создание соревнования'}
         </Title>
 
         <form onSubmit={form.onSubmit(handleSubmit)}>
@@ -677,8 +772,8 @@ export default function CreateCompetition() {
               <Button variant="default" onClick={() => navigate('/moderator/competitions')}>
                 Отмена
               </Button>
-              <Button type="submit" loading={createCompetitionMutation.isPending}>
-                Создать соревнование
+              <Button type="submit" loading={isEditMode ? updateCompetitionMutation.isPending : createCompetitionMutation.isPending}>
+                {isEditMode ? 'Сохранить изменения' : 'Создать соревнование'}
               </Button>
             </Group>
           </Stack>

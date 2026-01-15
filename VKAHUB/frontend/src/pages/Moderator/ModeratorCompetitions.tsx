@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Container, Title, Stack, Table, Badge, Group, ActionIcon, Text, Modal, Tooltip } from '@mantine/core';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { IconTrash, IconPlus, IconFileText } from '@tabler/icons-react';
+import { IconTrash, IconPlus, IconFileText, IconEdit } from '@tabler/icons-react';
 import { VTBCard } from '../../components/common/VTBCard';
 import { VTBButton } from '../../components/common/VTBButton';
 import { ConsoleInput } from '../../components/common/ConsoleInput';
@@ -167,6 +167,11 @@ export function ModeratorCompetitions() {
                       <Table.Td>{dayjs(comp.end_date).format('DD.MM.YYYY')}</Table.Td>
                       <Table.Td>
                         <Group gap="xs">
+                          <Tooltip label="Редактировать">
+                            <ActionIcon variant="light" color="blue" onClick={() => navigate(`/moderator/competitions/${comp.id}/edit`)}>
+                              <IconEdit size={18} />
+                            </ActionIcon>
+                          </Tooltip>
                           <Tooltip label="Просмотреть отчеты">
                             <ActionIcon variant="light" color="cyan" onClick={() => handleViewReports(comp.id)}>
                               <IconFileText size={18} />
