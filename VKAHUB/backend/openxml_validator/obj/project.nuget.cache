@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "dgSpecHash": "7irlBEWaVG5PtdgV8DkebJGVmqqy6WAIQgodPDKc0YueTi1gK38EYUQ0KS++tFpDufWIHlVH73fs+rRHatj/vw==",
+  "success": true,
+  "projectFilePath": "/Users/gedeko/Desktop/VKA_HUB/VKAHUB/backend/openxml_validator/openxml_validator.csproj",
+  "expectedPackageFiles": [
+    "/Users/gedeko/.nuget/packages/documentformat.openxml/3.0.2/documentformat.openxml.3.0.2.nupkg.sha512",
+    "/Users/gedeko/.nuget/packages/documentformat.openxml.framework/3.0.2/documentformat.openxml.framework.3.0.2.nupkg.sha512",
+    "/Users/gedeko/.nuget/packages/system.io.packaging/8.0.0/system.io.packaging.8.0.0.nupkg.sha512"
+  ],
+  "logs": []
+}

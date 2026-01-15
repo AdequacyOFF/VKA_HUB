@@ -673,7 +673,7 @@ async def generate_competition_report(
                         'last_name': user.last_name,
                         'first_name': user.first_name,
                         'middle_name': user.middle_name,
-                        'position': user.position
+                        'study_group': user.study_group
                     })
 
             registrations_data.append({
@@ -721,12 +721,17 @@ async def generate_competition_report(
         filename = f"Рапорт_{safe_type}_{safe_name}.docx"
         encoded_filename = quote(filename)
 
-        # Return as downloadable file
+        # Return as downloadable file with cache-busting headers
+        import time
+        timestamp = int(time.time())
         return StreamingResponse(
             buffer,
             media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             headers={
-                "Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"
+                "Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}",
+                "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+                "Pragma": "no-cache",
+                "X-Generated-At": str(timestamp)
             }
         )
 
@@ -935,12 +940,17 @@ async def generate_competition_report(
         filename = f"raport_{competition.name}_{datetime.now().strftime('%Y%m%d')}.docx"
         encoded_filename = quote(filename)
 
-        # Return as downloadable file
+        # Return as downloadable file with cache-busting headers
+        import time
+        timestamp = int(time.time())
         return StreamingResponse(
             buffer,
             media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             headers={
-                "Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"
+                "Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}",
+                "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+                "Pragma": "no-cache",
+                "X-Generated-At": str(timestamp)
             }
         )
 
