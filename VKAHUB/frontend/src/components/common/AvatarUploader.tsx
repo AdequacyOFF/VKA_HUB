@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Avatar, FileButton, Group, Stack, Text, ActionIcon } from '@mantine/core';
+import { Avatar, FileButton, Group, Stack, Text, ActionIcon, Box } from '@mantine/core';
 import { Dropzone, IMAGE_MIME_TYPE, FileWithPath } from '@mantine/dropzone';
 import { IconCamera, IconX, IconUpload } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
@@ -108,23 +108,119 @@ export function AvatarUploader({
   if (!editable) {
     return (
       <Stack align="center" gap="md">
-        <Avatar
-          src={avatarSrc}
-          size={size}
-          radius="50%"
-          className="vtb-avatar"
+        <Box
           style={{
-            border: '4px solid var(--vtb-cyan)',
-            boxShadow: '0 8px 32px rgba(0, 217, 255, 0.4)',
+            position: 'relative',
+            width: size + 40,
+            height: size + 40,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
           }}
-        />
+        >
+          {/* Console Corner Decorations */}
+          <div style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: 20,
+            height: 20,
+            borderTop: '2px solid var(--vtb-cyan)',
+            borderLeft: '2px solid var(--vtb-cyan)',
+          }} />
+          <div style={{
+            position: 'absolute',
+            top: 0,
+            right: 0,
+            width: 20,
+            height: 20,
+            borderTop: '2px solid var(--vtb-cyan)',
+            borderRight: '2px solid var(--vtb-cyan)',
+          }} />
+          <div style={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            width: 20,
+            height: 20,
+            borderBottom: '2px solid var(--vtb-cyan)',
+            borderLeft: '2px solid var(--vtb-cyan)',
+          }} />
+          <div style={{
+            position: 'absolute',
+            bottom: 0,
+            right: 0,
+            width: 20,
+            height: 20,
+            borderBottom: '2px solid var(--vtb-cyan)',
+            borderRight: '2px solid var(--vtb-cyan)',
+          }} />
+
+          <Avatar
+            src={avatarSrc}
+            size={size}
+            radius="50%"
+            style={{
+              border: '4px solid var(--vtb-cyan)',
+              boxShadow: '0 8px 32px rgba(0, 217, 255, 0.4)',
+              borderRadius: '50%',
+            }}
+          />
+        </Box>
       </Stack>
     );
   }
 
   return (
     <Stack align="center" gap="md">
-      <div style={{ position: 'relative' }}>
+      <Box
+        style={{
+          position: 'relative',
+          width: size + 40,
+          height: size + 40,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        {/* Console Corner Decorations */}
+        <div style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: 20,
+          height: 20,
+          borderTop: '2px solid var(--vtb-cyan)',
+          borderLeft: '2px solid var(--vtb-cyan)',
+        }} />
+        <div style={{
+          position: 'absolute',
+          top: 0,
+          right: 0,
+          width: 20,
+          height: 20,
+          borderTop: '2px solid var(--vtb-cyan)',
+          borderRight: '2px solid var(--vtb-cyan)',
+        }} />
+        <div style={{
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          width: 20,
+          height: 20,
+          borderBottom: '2px solid var(--vtb-cyan)',
+          borderLeft: '2px solid var(--vtb-cyan)',
+        }} />
+        <div style={{
+          position: 'absolute',
+          bottom: 0,
+          right: 0,
+          width: 20,
+          height: 20,
+          borderBottom: '2px solid var(--vtb-cyan)',
+          borderRight: '2px solid var(--vtb-cyan)',
+        }} />
+
         <Dropzone
           onDrop={handleDrop}
           accept={IMAGE_MIME_TYPE}
@@ -146,17 +242,17 @@ export function AvatarUploader({
             src={avatarSrc}
             size={size}
             radius="50%"
-            className="vtb-avatar"
             style={{
               border: '4px solid var(--vtb-cyan)',
               boxShadow: '0 8px 32px rgba(0, 217, 255, 0.4)',
               cursor: loading ? 'not-allowed' : 'pointer',
               transition: 'all 0.3s ease',
+              borderRadius: '50%',
             }}
           />
         </Dropzone>
 
-        <Group gap="xs" style={{ position: 'absolute', bottom: 0, right: 0 }}>
+        <Group gap="xs" style={{ position: 'absolute', bottom: -5, right: -5 }}>
           <FileButton onChange={handleFileSelect} accept="image/png,image/jpeg,image/jpg,image/webp">
             {(props) => (
               <ActionIcon
@@ -194,7 +290,7 @@ export function AvatarUploader({
             </ActionIcon>
           )}
         </Group>
-      </div>
+      </Box>
 
       <Text size="sm" c="dimmed" ta="center">
         Нажмите или перетащите изображение на аватар
