@@ -524,18 +524,18 @@ async def upload_screenshot(
     current_user = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Upload screenshot file for competition report (images only)"""
+    """Upload screencast video for competition report"""
     from app.infrastructure.storage.file_handler import save_file, validate_file_type
 
-    # Validate file type - only images allowed
-    allowed_extensions = ['jpg', 'jpeg', 'png', 'gif', 'webp']
+    # Validate file type - videos allowed
+    allowed_extensions = ['mp4', 'webm', 'mov']
     validate_file_type(file, allowed_extensions)
 
     # Save file
-    file_url = await save_file(file, 'screenshots')
+    file_url = await save_file(file, 'screencasts')
 
     return {
-        "message": "Screenshot uploaded successfully",
+        "message": "Screencast uploaded successfully",
         "file_url": file_url
     }
 

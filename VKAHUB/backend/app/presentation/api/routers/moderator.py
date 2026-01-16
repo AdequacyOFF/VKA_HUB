@@ -1,10 +1,13 @@
 """Moderator router"""
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
+from sqlalchemy.orm import selectinload
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
+from io import BytesIO
 
 from app.presentation.api.dependencies import get_db, require_moderator
 from app.presentation.api.dtos.moderator import (
@@ -926,3 +929,178 @@ async def get_platform_analytics(
         "teamStats": team_stats,
         "competitionTypes": competition_types
     }
+
+
+@router.get("/analytics/export")
+async def export_prize_winning_report(
+    period: str,
+    current_user = Depends(require_moderator),
+    db: AsyncSession = Depends(get_db)
+):
+    """Export prize-winning competition results to Excel
+
+    Generates an Excel file with prize-winning teams (1st, 2nd, 3rd place).
+
+    Columns:
+    - No. (serial number)
+    - Competition name
+    - Competition organizer
+    - Competition date
+    - Place occupied
+    - Team members data (serial number, rank, full name, study group)
+    """
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
+    from app.domain.models.competition_report import CompetitionReport, CompetitionResult
+    from app.domain.models.competition_registration import CompetitionRegistration
+    from app.domain.models.competition_team_member import CompetitionTeamMember
+
+    # Calculate date range based on period
+    now = datetime.utcnow()
+    if period == "week":
+        start_date = now - timedelta(days=7)
+    elif period == "month":
+        start_date = now - relativedelta(months=1)
+    elif period == "quarter":
+        start_date = now - relativedelta(months=3)
+    elif period == "year":
+        start_date = now - relativedelta(years=1)
+    else:
+        raise HTTPException(status_code=400, detail="Недопустимый период. Используйте: week, month, quarter, year")
+
+    # Query prize-winning reports (1st, 2nd, 3rd place only)
+    prize_results = [CompetitionResult.FIRST_PLACE, CompetitionResult.SECOND_PLACE, CompetitionResult.THIRD_PLACE]
+
+    result = await db.execute(
+        select(CompetitionReport)
+        .join(CompetitionRegistration, CompetitionReport.registration_id == CompetitionRegistration.id)
+        .join(Competition, CompetitionRegistration.competition_id == Competition.id)
+        .options(
+            selectinload(CompetitionReport.registration)
+            .selectinload(CompetitionRegistration.competition),
+            selectinload(CompetitionReport.registration)
+            .selectinload(CompetitionRegistration.team_members)
+            .selectinload(CompetitionTeamMember.user)
+        )
+        .where(CompetitionReport.result.in_(prize_results))
+        .where(CompetitionReport.submitted_at >= start_date)
+        .order_by(CompetitionReport.submitted_at.desc())
+    )
+
+    reports = result.scalars().all()
+
+    # Create Excel workbook
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Призовые места"
+
+    # Define styles
+    header_font = Font(bold=True, color="FFFFFF", size=11)
+    header_fill = PatternFill(start_color="2563B8", end_color="2563B8", fill_type="solid")
+    header_alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    cell_alignment = Alignment(horizontal="left", vertical="center", wrap_text=True)
+    thin_border = Border(
+        left=Side(style='thin'),
+        right=Side(style='thin'),
+        top=Side(style='thin'),
+        bottom=Side(style='thin')
+    )
+
+    # Create headers
+    headers = [
+        "№ п/п",
+        "Наименование соревнования",
+        "Организатор соревнования",
+        "Дата соревнования",
+        "Занятое место",
+        "Данные участников команды"
+    ]
+
+    for col, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col, value=header)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = header_alignment
+        cell.border = thin_border
+
+    # Set column widths
+    ws.column_dimensions['A'].width = 8   # No.
+    ws.column_dimensions['B'].width = 35  # Competition name
+    ws.column_dimensions['C'].width = 30  # Organizer
+    ws.column_dimensions['D'].width = 18  # Date
+    ws.column_dimensions['E'].width = 15  # Place
+    ws.column_dimensions['F'].width = 60  # Team members
+
+    # Map result enum to Russian text
+    result_map = {
+        CompetitionResult.FIRST_PLACE: "1 место",
+        CompetitionResult.SECOND_PLACE: "2 место",
+        CompetitionResult.THIRD_PLACE: "3 место"
+    }
+
+    # Fill data rows
+    for row_num, report in enumerate(reports, 2):
+        registration = report.registration
+        competition = registration.competition
+
+        # Format competition date
+        date_str = competition.start_date.strftime("%d.%m.%Y") if competition.start_date else ""
+        if competition.end_date and competition.end_date != competition.start_date:
+            date_str += f" - {competition.end_date.strftime('%d.%m.%Y')}"
+
+        # Format team members data
+        members_data = []
+        for idx, member in enumerate(registration.team_members, 1):
+            user = member.user
+            if user:
+                # Full name: Last First Middle
+                full_name = f"{user.last_name or ''} {user.first_name or ''} {user.middle_name or ''}".strip()
+                rank = user.rank or "-"
+                study_group = user.study_group or "-"
+                members_data.append(f"{idx}. {rank}, {full_name}, гр. {study_group}")
+
+        members_str = "\n".join(members_data) if members_data else "-"
+
+        # Write row data
+        ws.cell(row=row_num, column=1, value=row_num - 1).alignment = cell_alignment
+        ws.cell(row=row_num, column=1).border = thin_border
+
+        ws.cell(row=row_num, column=2, value=competition.name).alignment = cell_alignment
+        ws.cell(row=row_num, column=2).border = thin_border
+
+        ws.cell(row=row_num, column=3, value=competition.organizer or "-").alignment = cell_alignment
+        ws.cell(row=row_num, column=3).border = thin_border
+
+        ws.cell(row=row_num, column=4, value=date_str).alignment = cell_alignment
+        ws.cell(row=row_num, column=4).border = thin_border
+
+        ws.cell(row=row_num, column=5, value=result_map.get(report.result, str(report.result))).alignment = cell_alignment
+        ws.cell(row=row_num, column=5).border = thin_border
+
+        ws.cell(row=row_num, column=6, value=members_str).alignment = cell_alignment
+        ws.cell(row=row_num, column=6).border = thin_border
+
+        # Adjust row height based on number of members
+        ws.row_dimensions[row_num].height = max(20, len(members_data) * 15)
+
+    # Save to BytesIO
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    # Generate filename with period info (ASCII-safe for headers)
+    period_names = {
+        "week": "week",
+        "month": "month",
+        "quarter": "quarter",
+        "year": "year"
+    }
+    filename = f"prizovye_mesta_{period_names.get(period, period)}_{now.strftime('%Y%m%d')}.xlsx"
+
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"'
+        }
+    )

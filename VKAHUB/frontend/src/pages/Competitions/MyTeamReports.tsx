@@ -25,6 +25,7 @@ interface CompetitionReport {
   git_link: string;
   project_url?: string;
   presentation_url: string;
+  screenshot_url?: string;
   brief_summary: string;
   placement?: number;
   technologies_used?: string;
@@ -185,6 +186,23 @@ export default function MyTeamReports() {
                       Презентация
                     </Anchor>
                   </Group>
+
+                  {report.screenshot_url && (
+                    <div>
+                      <Text size="sm" fw={600} c="white" mb={8}>
+                        Скринкаст результата:
+                      </Text>
+                      <video
+                        src={report.screenshot_url}
+                        controls
+                        style={{
+                          maxWidth: 500,
+                          borderRadius: 8,
+                          border: '1px solid var(--vtb-cyan)',
+                        }}
+                      />
+                    </div>
+                  )}
 
                   {report.technologies_used && (
                     <div>

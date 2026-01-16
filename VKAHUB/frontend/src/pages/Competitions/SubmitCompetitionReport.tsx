@@ -15,7 +15,7 @@ import {
 import { Dropzone, MIME_TYPES } from '@mantine/dropzone';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
-import { IconAlertCircle, IconUpload, IconX, IconFileText, IconPhoto } from '@tabler/icons-react';
+import { IconAlertCircle, IconUpload, IconX, IconFileText, IconVideo } from '@tabler/icons-react';
 import { VTBCard } from '../../components/common/VTBCard';
 import { VTBButton } from '../../components/common/VTBButton';
 import { ConsoleInput } from '../../components/common/ConsoleInput';
@@ -221,13 +221,13 @@ export default function SubmitCompetitionReport() {
       form.setFieldValue('screenshot_url', response.file_url);
       notifications.show({
         title: 'Успех',
-        message: 'Скриншот успешно загружен!',
+        message: 'Видео успешно загружено!',
         color: 'teal',
       });
     } catch (error: any) {
       notifications.show({
         title: 'Ошибка',
-        message: error.response?.data?.detail || 'Не удалось загрузить скриншот',
+        message: error.response?.data?.detail || 'Не удалось загрузить видео',
         color: 'red',
       });
       setScreenshotFile(null);
@@ -436,19 +436,19 @@ export default function SubmitCompetitionReport() {
                 )}
               </ConsoleLabel>
 
-              {/* Drag & Drop для скриншота */}
-              <ConsoleLabel path="C:\Report\screenshot" label="Скриншот результата (опционально)">
+              {/* Drag & Drop для скринкаста */}
+              <ConsoleLabel path="C:\Report\screencast" label="Скринкаст результата (опционально)">
                 <Dropzone
                   onDrop={handleScreenshotDrop}
                   onReject={() => {
                     notifications.show({
                       title: 'Ошибка',
-                      message: 'Допустимые форматы: JPG, PNG, GIF, WebP',
+                      message: 'Допустимые форматы: MP4, WebM, MOV',
                       color: 'red',
                     });
                   }}
-                  maxSize={10 * 1024 * 1024}
-                  accept={[MIME_TYPES.png, MIME_TYPES.jpeg, MIME_TYPES.gif, MIME_TYPES.webp]}
+                  maxSize={100 * 1024 * 1024}
+                  accept={['video/mp4', 'video/webm', 'video/quicktime']}
                   loading={uploadingScreenshot}
                   style={{
                     background: 'rgba(0, 217, 255, 0.05)',
@@ -470,7 +470,7 @@ export default function SubmitCompetitionReport() {
                       />
                     </Dropzone.Reject>
                     <Dropzone.Idle>
-                      <IconPhoto
+                      <IconVideo
                         style={{ width: rem(52), height: rem(52), color: 'var(--vtb-cyan)' }}
                         stroke={1.5}
                       />
@@ -478,27 +478,29 @@ export default function SubmitCompetitionReport() {
 
                     <div>
                       <Text size="lg" c="white" inline>
-                        {screenshotFile ? screenshotFile.name : 'Перетащите скриншот сюда или нажмите для выбора'}
+                        {screenshotFile ? screenshotFile.name : 'Перетащите видео сюда или нажмите для выбора'}
                       </Text>
                       <Text size="sm" c="dimmed" inline mt={7}>
-                        JPG, PNG, GIF или WebP (до 10 МБ)
+                        MP4, WebM или MOV (до 100 МБ)
                       </Text>
                       {form.values.screenshot_url && (
                         <Text size="sm" c="teal" mt={4}>
-                          ✓ Скриншот загружен
+                          ✓ Видео загружено
                         </Text>
                       )}
                     </div>
                   </Group>
                 </Dropzone>
                 {form.values.screenshot_url && (
-                  <Image
+                  <video
                     src={form.values.screenshot_url}
-                    alt="Preview"
-                    maw={300}
-                    mt="md"
-                    radius="md"
-                    style={{ border: '1px solid var(--vtb-cyan)' }}
+                    controls
+                    style={{
+                      maxWidth: 400,
+                      marginTop: 16,
+                      borderRadius: 8,
+                      border: '1px solid var(--vtb-cyan)',
+                    }}
                   />
                 )}
               </ConsoleLabel>

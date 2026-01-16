@@ -41,18 +41,33 @@ export function ModeratorAnalytics() {
         responseType: 'blob',
       });
 
+      // Get filename from Content-Disposition header or generate default
+      const contentDisposition = response.headers['content-disposition'];
+      let filename = `prizovye_mesta_${selectedPeriod}_${Date.now()}.xlsx`;
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename=(.+)/);
+        if (filenameMatch) {
+          filename = filenameMatch[1].replace(/['"]/g, '');
+        }
+      }
+
       // Create download link
-      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const url = window.URL.createObjectURL(
+        new Blob([response.data], {
+          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        })
+      );
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `analytics_${selectedPeriod}_${Date.now()}.csv`);
+      link.setAttribute('download', filename);
       document.body.appendChild(link);
       link.click();
       link.remove();
+      window.URL.revokeObjectURL(url);
 
       notifications.show({
         title: 'Успех',
-        message: 'Отчет успешно экспортирован',
+        message: 'Отчет о призовых местах успешно экспортирован',
         color: 'teal',
       });
     } catch (error: any) {
@@ -187,8 +202,8 @@ export function ModeratorAnalytics() {
               <Stack gap="lg" align="center" justify="center" style={{ minHeight: 300 }}>
                 <IconFileAnalytics size={80} color="var(--vtb-cyan)" opacity={0.5} />
                 <div style={{ textAlign: 'center', width: '100%', maxWidth: 400 }}>
-                  <Title order={3} c="white" mb="xs">Экспорт отчётов</Title>
-                  <Text c="dimmed" mb="lg">Скачайте детализированные отчёты о деятельности платформы</Text>
+                  <Title order={3} c="white" mb="xs">Экспорт призовых мест</Title>
+                  <Text c="dimmed" mb="lg">Скачайте Excel-отчёт о командах, занявших призовые места в соревнованиях</Text>
                   <Stack gap="md">
                     <Select
                       placeholder="Выберите период"
@@ -212,7 +227,7 @@ export function ModeratorAnalytics() {
                       disabled={!selectedPeriod || exporting}
                       fullWidth
                     >
-                      Экспортировать отчет
+                      Экспортировать в Excel
                     </VTBButton>
                   </Stack>
                 </div>
