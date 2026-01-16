@@ -19,15 +19,22 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # Add reviewed_by and reviewed_at columns to competition_registrations
-    op.add_column(
-        'competition_registrations',
-        sa.Column('reviewed_by', sa.Integer(), sa.ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
-    )
-    op.add_column(
-        'competition_registrations',
-        sa.Column('reviewed_at', sa.DateTime(), nullable=True)
-    )
+    # Add reviewed_by and reviewed_at columns to competition_registrations (if not exist)
+    conn = op.get_bind()
+    inspector = sa.inspect(conn)
+    columns = [col['name'] for col in inspector.get_columns('competition_registrations')]
+
+    if 'reviewed_by' not in columns:
+        op.add_column(
+            'competition_registrations',
+            sa.Column('reviewed_by', sa.Integer(), sa.ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
+        )
+
+    if 'reviewed_at' not in columns:
+        op.add_column(
+            'competition_registrations',
+            sa.Column('reviewed_at', sa.DateTime(), nullable=True)
+        )
 
 
 def downgrade() -> None:
