@@ -18,7 +18,8 @@ from app.presentation.api.routers import (
     certificates_router,
     reports_router,
     moderator_router,
-    public_router
+    public_router,
+    notifications_router
 )
 from app.presentation.middlewares.error_handler import (
     http_exception_handler,
@@ -76,6 +77,7 @@ app.include_router(certificates_router)
 app.include_router(reports_router)
 app.include_router(moderator_router)
 app.include_router(public_router)
+app.include_router(notifications_router)
 
 
 @app.get("/")

@@ -17,11 +17,42 @@ from xml.etree import ElementTree as ET
 _ILLEGAL_XML_CHARS_RE = re.compile(r'[\x00-\x08\x0b\x0c\x0e-\x1f]')
 
 # XML namespace for xml:space attribute
-_XML_NS = 'http://schemas.openxmlformats.org/XML/1998/namespace'
+# CRITICAL: Must use the W3C-defined XML namespace, NOT openxmlformats.org
+# Wrong: http://schemas.openxmlformats.org/XML/1998/namespace (causes Word repair!)
+# Correct: http://www.w3.org/XML/1998/namespace
+_XML_NS = 'http://www.w3.org/XML/1998/namespace'
 _XML_SPACE_ATTR = f'{{{_XML_NS}}}space'
 
 # Wordprocessingml namespace - attributes on w: elements need this prefix
 _W_NS = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'
+
+# Markup Compatibility namespace - for mc:Ignorable attribute
+_MC_NS = 'http://schemas.openxmlformats.org/markup-compatibility/2006'
+
+# All OOXML namespaces that might be referenced in mc:Ignorable
+# These MUST be declared in the document root for Word to accept the file
+_EXTENDED_NAMESPACES = {
+    'w14': 'http://schemas.microsoft.com/office/word/2010/wordml',
+    'w15': 'http://schemas.microsoft.com/office/word/2012/wordml',
+    'w16': 'http://schemas.microsoft.com/office/word/2018/wordml',
+    'w16cex': 'http://schemas.microsoft.com/office/word/2018/wordml/cex',
+    'w16cid': 'http://schemas.microsoft.com/office/word/2016/wordml/cid',
+    'w16se': 'http://schemas.microsoft.com/office/word/2015/wordml/symex',
+    'w16sdtdh': 'http://schemas.microsoft.com/office/word/2020/wordml/sdtdatahash',
+    'wp14': 'http://schemas.microsoft.com/office/word/2010/wordprocessingDrawing',
+    'mc': 'http://schemas.openxmlformats.org/markup-compatibility/2006',
+}
+
+# OOXML schema-defined order for w:rPr child elements (critical for validation)
+# Elements must appear in this order; we need to know where to insert rFonts/sz
+_RPR_ELEMENT_ORDER = [
+    'rStyle', 'rFonts', 'b', 'bCs', 'i', 'iCs', 'caps', 'smallCaps',
+    'strike', 'dstrike', 'outline', 'shadow', 'emboss', 'imprint',
+    'noProof', 'snapToGrid', 'vanish', 'webHidden', 'color', 'spacing',
+    'w', 'kern', 'position', 'sz', 'szCs', 'highlight', 'u', 'effect',
+    'bdr', 'shd', 'fitText', 'vertAlign', 'rtl', 'cs', 'em', 'lang',
+    'eastAsianLayout', 'specVanish', 'oMath'
+]
 
 # Pattern to detect duplicate xml:space attributes (the root cause of Word repair prompt)
 # This happens when ElementTree doesn't recognize xml: prefix and adds ns#: prefixed duplicate
@@ -39,7 +70,18 @@ _NS_FIXUP_PATTERNS = [
     (re.compile(r'<ns\d+:Override\s'), '<Override '),
     # Fix xml:space attribute that got ns# prefix
     (re.compile(r'\bns\d+:space="preserve"'), 'xml:space="preserve"'),
+    # CRITICAL: Fix wrong XML namespace URI (this was the root cause of Word repair!)
+    # Wrong: schemas.openxmlformats.org/XML/1998/namespace
+    # Correct: www.w3.org/XML/1998/namespace
+    (re.compile(r'schemas\.openxmlformats\.org/XML/1998/namespace'), 'www.w3.org/XML/1998/namespace'),
 ]
+
+# Pattern to remove image relationships from .rels files
+# This removes <Relationship> elements where Target points to media/image*.
+# Uses regex to avoid ElementTree re-serialization which breaks namespaces.
+_IMAGE_REL_PATTERN = re.compile(
+    r'<Relationship\s+[^>]*Target="media/image[^"]*"[^/]*/>'
+)
 
 # Attributes that need w: prefix when on w: elements
 # These are defined in the OOXML schema as namespace-qualified
@@ -177,6 +219,129 @@ def _fix_xml_serialization(xml_bytes: bytes) -> bytes:
     return xml_str.encode('utf-8')
 
 
+def _fix_mc_ignorable(xml_bytes: bytes) -> bytes:
+    """
+    Fix the mc:Ignorable attribute by adding required namespace declarations.
+
+    The mc:Ignorable attribute lists namespace prefixes (like w14, w15, w16, etc.)
+    that Word should ignore if it doesn't understand them. However, these prefixes
+    MUST be declared as xmlns attributes on the document element.
+
+    ElementTree loses the original namespace prefix declarations when serializing,
+    keeping only those actually used in elements. This causes validation errors
+    because mc:Ignorable references undefined prefixes.
+
+    Fix: Add all required xmlns declarations and ensure mc:Ignorable uses proper prefix.
+
+    Args:
+        xml_bytes: XML content as bytes
+
+    Returns:
+        Fixed XML with proper namespace declarations
+    """
+    xml_str = xml_bytes.decode('utf-8')
+
+    # Find the opening tag of w:document
+    doc_start = xml_str.find('<w:document')
+    if doc_start == -1:
+        return xml_bytes
+
+    doc_end = xml_str.find('>', doc_start)
+    if doc_end == -1:
+        return xml_bytes
+
+    opening_tag = xml_str[doc_start:doc_end + 1]
+
+    # Build namespace declarations that need to be added
+    ns_declarations = []
+    for prefix, uri in _EXTENDED_NAMESPACES.items():
+        # Check if this namespace is already declared
+        if f'xmlns:{prefix}=' not in opening_tag:
+            ns_declarations.append(f'xmlns:{prefix}="{uri}"')
+
+    # Remove any ns#:Ignorable and replace with mc:Ignorable
+    # Pattern: ns[0-9]+:Ignorable="..."
+    ignorable_pattern = re.compile(r'\s+ns\d+:Ignorable="[^"]*"')
+    mc_ignorable_match = ignorable_pattern.search(opening_tag)
+
+    if mc_ignorable_match:
+        # Replace ns#:Ignorable with mc:Ignorable
+        new_ignorable = ' mc:Ignorable="w14 w15 w16se w16cid w16 w16cex w16sdtdh wp14"'
+        opening_tag = opening_tag[:mc_ignorable_match.start()] + new_ignorable + opening_tag[mc_ignorable_match.end():]
+    elif 'mc:Ignorable' not in opening_tag and 'Ignorable=' not in opening_tag:
+        # No Ignorable attribute - nothing to fix
+        pass
+    else:
+        # mc:Ignorable already present with correct prefix - leave it
+        pass
+
+    # Insert namespace declarations before the closing >
+    if ns_declarations:
+        insert_pos = opening_tag.rfind('>')
+        ns_str = ' ' + ' '.join(ns_declarations)
+        opening_tag = opening_tag[:insert_pos] + ns_str + opening_tag[insert_pos:]
+
+    # Reconstruct the XML
+    xml_str = xml_str[:doc_start] + opening_tag + xml_str[doc_end + 1:]
+
+    return xml_str.encode('utf-8')
+
+
+def _get_rpr_insert_index(rPr: ET.Element, element_name: str) -> int:
+    """
+    Calculate the correct insertion index for an element in w:rPr.
+
+    OOXML schema requires child elements of w:rPr to be in a specific order.
+    This function determines where to insert a new element to maintain valid order.
+
+    Args:
+        rPr: The w:rPr element
+        element_name: Name of element to insert (e.g., 'rFonts', 'sz')
+
+    Returns:
+        Index at which to insert the element
+    """
+    target_order = _RPR_ELEMENT_ORDER.index(element_name) if element_name in _RPR_ELEMENT_ORDER else 999
+
+    insert_idx = 0
+    for i, child in enumerate(rPr):
+        child_name = child.tag.split('}')[-1]
+        if child_name in _RPR_ELEMENT_ORDER:
+            child_order = _RPR_ELEMENT_ORDER.index(child_name)
+            if child_order < target_order:
+                insert_idx = i + 1
+
+    return insert_idx
+
+
+def _remove_image_relationships(rels_bytes: bytes) -> bytes:
+    """
+    Remove image relationship entries from a .rels file using regex.
+
+    This uses string manipulation instead of ElementTree parsing to avoid
+    re-serialization issues that would corrupt the XML structure.
+
+    The problem: Template DOCX has relationships pointing to media/image*.png files.
+    When we skip copying media files to save space, the relationships become broken.
+    Word then shows "unreadable content" and repairs by removing these references.
+
+    Solution: Remove the relationship entries BEFORE creating the output DOCX.
+
+    Args:
+        rels_bytes: Original .rels file content
+
+    Returns:
+        Modified .rels file with image relationships removed
+    """
+    rels_str = rels_bytes.decode('utf-8')
+
+    # Remove <Relationship> elements pointing to media/image* files
+    # Pattern matches: <Relationship Id="..." Type="..." Target="media/image..."/>
+    cleaned = _IMAGE_REL_PATTERN.sub('', rels_str)
+
+    return cleaned.encode('utf-8')
+
+
 def sanitize_filename(filename: str, max_length: int = 150) -> str:
     """
     Sanitize filename for Windows/Unix compatibility
@@ -266,24 +431,22 @@ class TemplateReportGenerator:
         # Apply Times New Roman 13pt to all text
         self._apply_global_formatting(root)
 
-        # Clean up relationships for removed images
-        if image_rels_to_remove and 'word/_rels/document.xml.rels' in file_dict:
-            file_dict['word/_rels/document.xml.rels'] = self._clean_relationships(
-                file_dict['word/_rels/document.xml.rels'],
-                image_rels_to_remove
-            )
-
-        # Clean up Content_Types for removed media
-        if '[Content_Types].xml' in file_dict:
-            file_dict['[Content_Types].xml'] = self._clean_content_types(
-                file_dict['[Content_Types].xml']
-            )
+        # Remove image relationships from document.xml.rels
+        # CRITICAL: Must remove relationship entries for images we're not including,
+        # otherwise Word shows "unreadable content" and repairs the document.
+        # We use regex-based string manipulation (not ElementTree parsing) to avoid
+        # re-serialization issues that corrupt the XML structure.
+        doc_rels_path = 'word/_rels/document.xml.rels'
+        if doc_rels_path in file_dict:
+            file_dict[doc_rels_path] = _remove_image_relationships(file_dict[doc_rels_path])
 
         # Serialize document.xml with proper XML declaration
         # Use method='xml' to ensure proper XML format
         raw_xml = ET.tostring(root, encoding='utf-8', method='xml')
         # Fix ElementTree serialization issues (duplicate attributes, ns# prefixes)
         fixed_xml = _fix_xml_serialization(raw_xml)
+        # Fix mc:Ignorable namespace declarations (critical for OOXML validation)
+        fixed_xml = _fix_mc_ignorable(fixed_xml)
         file_dict['word/document.xml'] = b'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' + fixed_xml
 
         # Create new DOCX in memory (exclude images/media)
@@ -364,9 +527,21 @@ class TemplateReportGenerator:
             regex=True
         )
 
-        # Update year in date lines
+        # Update year in date lines (text is split across runs)
         current_year = datetime.now().year
-        self._replace_text_in_runs(root, "2025 г.", f"{current_year} г.")
+        self._replace_text_across_runs(root, "2025 г.", f"{current_year} г.")
+
+        # Update signature block 1: Начальник 61 кафедры
+        # Text is split across multiple runs, so use _replace_text_across_runs
+        self._replace_text_across_runs(root, "Врио начальника 61 кафедры", "Начальник 61 кафедры")
+        self._replace_text_across_runs(root, "Врио начальника 6 факультета", "Начальник 6 факультета")
+        self._replace_text_across_runs(root, "А.Дудкин", "Д.Бирюков")
+
+        # Update endorsement line
+        self._replace_text_across_runs(root, "Дудкина А.С.", "Бирюкова Д.Н.")
+
+        # Update signature block 2: Начальник 6 факультета
+        self._replace_text_across_runs(root, "А.Панков", "А.Девяткин")
 
     def _replace_participant_lists(self, root: ET.Element, registrations: List[Dict[str, Any]]):
         """Replace participant lists and locations"""
@@ -380,13 +555,13 @@ class TemplateReportGenerator:
             for member in reg['members']:
                 rank = member.get('rank') or 'Рядовой'
                 last_name = member.get('last_name', '')
-                first_initial = member.get('first_name', '')[0] + '.' if member.get('first_name') else ''
-                middle_initial = member.get('middle_name', '')[0] + '.' if member.get('middle_name') else ''
-                position = member.get('position', '')
+                first_name = member.get('first_name', '')
+                middle_name = member.get('middle_name', '')
+                study_group = member.get('study_group', '')
 
-                member_line = f"{counter}. {rank} {last_name} {first_initial}{middle_initial}"
-                if position:
-                    member_line += f" ({position})"
+                member_line = f"{counter}. {rank} {last_name} {first_name} {middle_name}"
+                if study_group:
+                    member_line += f" ({study_group} уч. гр.)"
                 member_line += "."
 
                 team_members.append(member_line)
@@ -558,11 +733,43 @@ class TemplateReportGenerator:
                 _set_xml_space_preserve(t_elem)
 
     def _replace_text_in_runs(self, root: ET.Element, old_text: str, new_text: str):
-        """Replace all occurrences of text in runs"""
+        """Replace all occurrences of text in runs (single <w:t> matches only)"""
 
         for t_elem in root.findall('.//w:t', self.NAMESPACES):
             if t_elem.text and old_text in t_elem.text:
                 t_elem.text = sanitize_xml_text(t_elem.text.replace(old_text, new_text))
+
+    def _replace_text_across_runs(self, root: ET.Element, old_text: str, new_text: str):
+        """Replace text that may span multiple <w:t> elements within a paragraph"""
+
+        body = root.find('.//w:body', self.NAMESPACES)
+        if body is None:
+            return
+
+        for para in body.findall('.//w:p', self.NAMESPACES):
+            # Get all text elements and their content
+            t_elements = para.findall('.//w:t', self.NAMESPACES)
+            if not t_elements:
+                continue
+
+            # Build combined text
+            combined_text = ''.join(t.text or '' for t in t_elements)
+
+            # Check if old_text is in combined text
+            if old_text not in combined_text:
+                continue
+
+            # Replace the text
+            new_combined = combined_text.replace(old_text, new_text)
+
+            # Redistribute text: put all in first element, clear rest
+            if t_elements:
+                t_elements[0].text = sanitize_xml_text(new_combined)
+                _set_xml_space_preserve(t_elements[0])
+
+                # Clear remaining elements
+                for t in t_elements[1:]:
+                    t.text = ''
 
     def _remove_images(self, root: ET.Element) -> set:
         """
@@ -698,19 +905,27 @@ class TemplateReportGenerator:
                 if tag in ['rFonts', 'sz', 'szCs']:
                     rPr.remove(elem)
 
-            # Add Times New Roman font
-            # Note: Attributes like 'ascii', 'hAnsi', 'cs' are NOT namespace-qualified in OOXML
-            rFonts = ET.SubElement(rPr, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}rFonts')
+            # Add Times New Roman font at correct position in element order
+            # CRITICAL: OOXML schema requires elements in specific order within w:rPr
+            # rFonts must come near the beginning (after rStyle if present)
+            rFonts = ET.Element('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}rFonts')
             rFonts.set('ascii', 'Times New Roman')
             rFonts.set('hAnsi', 'Times New Roman')
             rFonts.set('cs', 'Times New Roman')
+            rFonts_idx = _get_rpr_insert_index(rPr, 'rFonts')
+            rPr.insert(rFonts_idx, rFonts)
 
-            # Add font size 13pt (26 half-points)
-            # Note: 'val' attribute is NOT namespace-qualified in OOXML
-            sz = ET.SubElement(rPr, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}sz')
+            # Add font size 13pt (26 half-points) at correct positions
+            # sz and szCs must come after position and before highlight/u/effect
+            sz = ET.Element('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}sz')
             sz.set('val', '26')
-            szCs = ET.SubElement(rPr, '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}szCs')
+            sz_idx = _get_rpr_insert_index(rPr, 'sz')
+            rPr.insert(sz_idx, sz)
+
+            szCs = ET.Element('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}szCs')
             szCs.set('val', '26')
+            szCs_idx = _get_rpr_insert_index(rPr, 'szCs')
+            rPr.insert(szCs_idx, szCs)
 
     def _clone_paragraph_with_text(self, template_para: ET.Element, text: str) -> ET.Element:
         """Clone a paragraph's formatting and set new text"""

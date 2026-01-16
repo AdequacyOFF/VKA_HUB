@@ -141,6 +141,16 @@ export const queryKeys = {
     all: ['skills'] as const,
     list: () => [...queryKeys.skills.all, 'list'] as const,
   },
+
+  // ============================================
+  // NOTIFICATIONS
+  // ============================================
+  notifications: {
+    all: ['notifications'] as const,
+    list: (params?: Record<string, unknown>) =>
+      [...queryKeys.notifications.all, 'list', params] as const,
+    unread: () => [...queryKeys.notifications.all, 'unread'] as const,
+  },
 } as const;
 
 // Type helpers for query key inference

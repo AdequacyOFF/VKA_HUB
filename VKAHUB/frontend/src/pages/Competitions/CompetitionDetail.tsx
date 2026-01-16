@@ -17,7 +17,9 @@ import {
   IconCode,
   IconTrash,
   IconDownload,
-  IconEdit
+  IconEdit,
+  IconCircleCheck,
+  IconCircleX
 } from '@tabler/icons-react';
 import { VTBCard } from '../../components/common/VTBCard';
 import { VTBButton } from '../../components/common/VTBButton';
@@ -76,6 +78,29 @@ export function CompetitionDetail() {
       notifications.show({
         title: 'Ошибка',
         message: 'Не удалось удалить команду',
+        color: 'red',
+      });
+    },
+  });
+
+  const updateStatusMutation = useMutation({
+    mutationFn: ({ competitionId, registrationId, status }: { competitionId: number; registrationId: number; status: 'approved' | 'rejected' }) =>
+      competitionsApi.updateRegistrationStatus(competitionId, registrationId, status),
+    onSuccess: (_, variables) => {
+      const statusText = variables.status === 'approved' ? 'одобрена' : 'отклонена';
+      notifications.show({
+        title: `Заявка ${statusText}`,
+        message: `Заявка команды успешно ${statusText}`,
+        color: variables.status === 'approved' ? 'green' : 'red',
+      });
+
+      // Invalidate to refresh the list
+      invalidateCompetitionQueries({ queryClient }, Number(id));
+    },
+    onError: () => {
+      notifications.show({
+        title: 'Ошибка',
+        message: 'Не удалось обновить статус заявки',
         color: 'red',
       });
     },
@@ -697,15 +722,49 @@ export function CompetitionDetail() {
                           </Group>
 
                           {user?.is_moderator && (
-                            <Tooltip label="Удалить команду">
-                              <ActionIcon
-                                color="red"
-                                variant="subtle"
-                                onClick={() => handleRemoveTeam(registration)}
-                              >
-                                <IconTrash size={20} />
-                              </ActionIcon>
-                            </Tooltip>
+                            <Group gap="xs">
+                              {registration.status === 'pending' && (
+                                <>
+                                  <Tooltip label="Одобрить заявку">
+                                    <ActionIcon
+                                      color="green"
+                                      variant="subtle"
+                                      onClick={() => updateStatusMutation.mutate({
+                                        competitionId: Number(id),
+                                        registrationId: registration.id,
+                                        status: 'approved'
+                                      })}
+                                      loading={updateStatusMutation.isPending}
+                                    >
+                                      <IconCircleCheck size={20} />
+                                    </ActionIcon>
+                                  </Tooltip>
+                                  <Tooltip label="Отклонить заявку">
+                                    <ActionIcon
+                                      color="orange"
+                                      variant="subtle"
+                                      onClick={() => updateStatusMutation.mutate({
+                                        competitionId: Number(id),
+                                        registrationId: registration.id,
+                                        status: 'rejected'
+                                      })}
+                                      loading={updateStatusMutation.isPending}
+                                    >
+                                      <IconCircleX size={20} />
+                                    </ActionIcon>
+                                  </Tooltip>
+                                </>
+                              )}
+                              <Tooltip label="Удалить команду">
+                                <ActionIcon
+                                  color="red"
+                                  variant="subtle"
+                                  onClick={() => handleRemoveTeam(registration)}
+                                >
+                                  <IconTrash size={20} />
+                                </ActionIcon>
+                              </Tooltip>
+                            </Group>
                           )}
                         </Group>
                       </VTBCard>
