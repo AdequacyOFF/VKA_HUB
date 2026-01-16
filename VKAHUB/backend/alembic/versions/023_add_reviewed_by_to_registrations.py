@@ -1,8 +1,8 @@
 """Add reviewed_by and reviewed_at to competition_registrations
 
-Revision ID: 021
-Revises: 020
-Create Date: 2025-01-16
+Revision ID: 023
+Revises: 022
+Create Date: 2026-01-16
 
 """
 from typing import Sequence, Union
@@ -12,8 +12,8 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '021'
-down_revision: Union[str, None] = '020'
+revision: str = '023'
+down_revision: Union[str, None] = '022'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
