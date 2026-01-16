@@ -126,6 +126,141 @@ async def create_competition(
     return build_competition_response(competition)
 
 
+@router.get("/my-reports")
+async def get_my_team_reports(
+    current_user = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get reports for teams where current user is captain"""
+    from sqlalchemy import select
+    from app.domain.models.team import Team
+
+    # Get teams where current user is captain
+    teams_result = await db.execute(
+        select(Team).where(Team.captain_id == current_user.id)
+    )
+    teams = teams_result.scalars().all()
+
+    all_reports = []
+    for team in teams:
+        # Get registrations for this team
+        result = await db.execute(
+            select(CompetitionReport, CompetitionRegistration, Competition)
+            .join(CompetitionRegistration, CompetitionReport.registration_id == CompetitionRegistration.id)
+            .join(Competition, CompetitionRegistration.competition_id == Competition.id)
+            .where(CompetitionRegistration.team_id == team.id)
+        )
+
+        reports_data = result.all()
+        for report, registration, comp in reports_data:
+            all_reports.append(CompetitionReportResponse(
+                id=report.id,
+                registration_id=report.registration_id,
+                team_name=team.name,
+                competition_name=comp.name,
+                result=report.result.value if report.result else "did_not_pass",
+                git_link=report.git_link,
+                project_url=report.project_url,
+                presentation_url=report.presentation_url,
+                brief_summary=report.brief_summary,
+                placement=report.placement,
+                technologies_used=report.technologies_used,
+                individual_contributions=report.individual_contributions,
+                team_evaluation=report.team_evaluation,
+                problems_faced=report.problems_faced,
+                screenshot_url=report.screenshot_url,
+                submitted_by=report.submitted_by,
+                submitted_at=report.submitted_at
+            ))
+
+    return {
+        "total": len(all_reports),
+        "reports": all_reports
+    }
+
+
+@router.get("/my-teams/completed-competitions")
+async def get_completed_competitions_for_my_teams(
+    current_user = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get list of all competitions that user's teams participated in (as captain or member)"""
+    from sqlalchemy import select
+    from app.domain.models.competition_team_member import CompetitionTeamMember
+    from app.domain.models.team import Team
+
+    team_repo = TeamRepositoryImpl(db)
+
+    # Get teams where user is captain
+    captain_teams_result = await db.execute(
+        select(Team).where(Team.captain_id == current_user.id)
+    )
+    captain_teams = captain_teams_result.scalars().all()
+
+    # Get teams where user is a member (via competition registrations)
+    member_registrations_result = await db.execute(
+        select(CompetitionTeamMember.registration_id)
+        .where(CompetitionTeamMember.user_id == current_user.id)
+    )
+    member_registration_ids = [r[0] for r in member_registrations_result.all()]
+
+    # Get unique team IDs from registrations where user is a member
+    member_team_ids = set()
+    if member_registration_ids:
+        registrations_result = await db.execute(
+            select(CompetitionRegistration.team_id)
+            .where(CompetitionRegistration.id.in_(member_registration_ids))
+        )
+        member_team_ids = {r[0] for r in registrations_result.all()}
+
+    # Combine captain and member teams
+    all_team_ids = {team.id for team in captain_teams} | member_team_ids
+
+    all_competitions = []
+    seen_registrations = set()  # Avoid duplicates
+
+    for team_id in all_team_ids:
+        # Get team info
+        team = await team_repo.get_by_id(team_id)
+        if not team:
+            continue
+
+        # Get all registrations for this team (no date filter)
+        result = await db.execute(
+            select(CompetitionRegistration, Competition)
+            .join(Competition, CompetitionRegistration.competition_id == Competition.id)
+            .where(CompetitionRegistration.team_id == team_id)
+        )
+
+        registrations_data = result.all()
+        for registration, competition in registrations_data:
+            if registration.id in seen_registrations:
+                continue
+            seen_registrations.add(registration.id)
+
+            # Check if report already submitted
+            report_check = await db.execute(
+                select(CompetitionReport).where(CompetitionReport.registration_id == registration.id)
+            )
+            has_report = report_check.scalar_one_or_none() is not None
+
+            all_competitions.append({
+                "registration_id": registration.id,
+                "competition_id": competition.id,
+                "competition_name": competition.name,
+                "competition_type": competition.type,
+                "team_id": team.id,
+                "team_name": team.name,
+                "end_date": competition.end_date.isoformat(),
+                "has_report": has_report
+            })
+
+    return {
+        "total": len(all_competitions),
+        "competitions": all_competitions
+    }
+
+
 @router.get("/{competition_id}", response_model=CompetitionResponse)
 async def get_competition(
     competition_id: int,
@@ -686,136 +821,6 @@ async def get_competition_reports(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error fetching competition reports: {str(e)}"
         )
-
-
-@router.get("/my-reports")
-async def get_my_team_reports(
-    current_user = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
-):
-    """Get reports for teams where current user is captain"""
-    from sqlalchemy import select
-
-    team_repo = TeamRepositoryImpl(db)
-    teams = await team_repo.get_teams_by_captain(current_user.id)
-
-    all_reports = []
-    for team in teams:
-        # Get registrations for this team
-        result = await db.execute(
-            select(CompetitionReport, CompetitionRegistration, Competition)
-            .join(CompetitionRegistration, CompetitionReport.registration_id == CompetitionRegistration.id)
-            .join(Competition, CompetitionRegistration.competition_id == Competition.id)
-            .where(CompetitionRegistration.team_id == team.id)
-        )
-
-        reports_data = result.all()
-        for report, registration, comp in reports_data:
-            all_reports.append(CompetitionReportResponse(
-                id=report.id,
-                registration_id=report.registration_id,
-                team_name=team.name,
-                competition_name=comp.name,
-                result=report.result.value if report.result else "did_not_pass",
-                git_link=report.git_link,
-                project_url=report.project_url,
-                presentation_url=report.presentation_url,
-                brief_summary=report.brief_summary,
-                placement=report.placement,
-                technologies_used=report.technologies_used,
-                individual_contributions=report.individual_contributions,
-                team_evaluation=report.team_evaluation,
-                problems_faced=report.problems_faced,
-                submitted_by=report.submitted_by,
-                submitted_at=report.submitted_at
-            ))
-
-    return {
-        "total": len(all_reports),
-        "reports": all_reports
-    }
-
-
-@router.get("/my-teams/completed-competitions")
-async def get_completed_competitions_for_my_teams(
-    current_user = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
-):
-    """Get list of all competitions that user's teams participated in (as captain or member)"""
-    from sqlalchemy import select
-    from app.domain.models.competition_team_member import CompetitionTeamMember
-    from app.domain.models.team import Team
-
-    team_repo = TeamRepositoryImpl(db)
-
-    # Get teams where user is captain
-    captain_teams_result = await db.execute(
-        select(Team).where(Team.captain_id == current_user.id)
-    )
-    captain_teams = captain_teams_result.scalars().all()
-
-    # Get teams where user is a member (via competition registrations)
-    member_registrations_result = await db.execute(
-        select(CompetitionTeamMember.registration_id)
-        .where(CompetitionTeamMember.user_id == current_user.id)
-    )
-    member_registration_ids = [r[0] for r in member_registrations_result.all()]
-
-    # Get unique team IDs from registrations where user is a member
-    member_team_ids = set()
-    if member_registration_ids:
-        registrations_result = await db.execute(
-            select(CompetitionRegistration.team_id)
-            .where(CompetitionRegistration.id.in_(member_registration_ids))
-        )
-        member_team_ids = {r[0] for r in registrations_result.all()}
-
-    # Combine captain and member teams
-    all_team_ids = {team.id for team in captain_teams} | member_team_ids
-
-    all_competitions = []
-    seen_registrations = set()  # Avoid duplicates
-
-    for team_id in all_team_ids:
-        # Get team info
-        team = await team_repo.get_by_id(team_id)
-        if not team:
-            continue
-
-        # Get all registrations for this team (no date filter)
-        result = await db.execute(
-            select(CompetitionRegistration, Competition)
-            .join(Competition, CompetitionRegistration.competition_id == Competition.id)
-            .where(CompetitionRegistration.team_id == team_id)
-        )
-
-        registrations_data = result.all()
-        for registration, competition in registrations_data:
-            if registration.id in seen_registrations:
-                continue
-            seen_registrations.add(registration.id)
-
-            # Check if report already submitted
-            report_check = await db.execute(
-                select(CompetitionReport).where(CompetitionReport.registration_id == registration.id)
-            )
-            has_report = report_check.scalar_one_or_none() is not None
-
-            all_competitions.append({
-                "registration_id": registration.id,
-                "competition_id": competition.id,
-                "competition_name": competition.name,
-                "competition_type": competition.type,
-                "team_id": team.id,
-                "team_name": team.name,
-                "end_date": competition.end_date.isoformat(),
-                "has_report": has_report
-            })
-
-    return {
-        "total": len(all_competitions),
-        "competitions": all_competitions
-    }
 
 
 @router.get("/{competition_id}/reports/generate")
