@@ -59,7 +59,7 @@ export function TeamsList() {
               {isAuthenticated && (
                 <VTBButton
                   fullWidth
-                  leftSection={<IconPlus size={18} />}
+                  leftSection={<IconPlus size={18} color={'black'}/>}
                   onClick={() => navigate('/teams/create')}
                 >
                   Создать команду

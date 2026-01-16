@@ -156,16 +156,23 @@ export function TeamRequests() {
                       <VTBButton
                         variant="primary"
                         size="sm"
-                        leftSection={<IconCheck size={16} />}
+                        px="xs"
+                        leftSection={<IconCheck size={25} />}
                         onClick={() => approveMutation.mutate(request.id)}
                         loading={approveMutation.isPending}
+                         style={{
+                          background: 'rgba(34, 197, 94, 0.12)',
+                          border: '1px solid rgba(34, 197, 94, 0.65)', 
+                          color: 'white',
+                        }}
                       >
                         Принять
                       </VTBButton>
                       <VTBButton
                         variant="secondary"
                         size="sm"
-                        leftSection={<IconX size={16} />}
+                        px="xs"
+                        leftSection={<IconX size={25} />}
                         onClick={() => rejectMutation.mutate(request.id)}
                         loading={rejectMutation.isPending}
                         style={{

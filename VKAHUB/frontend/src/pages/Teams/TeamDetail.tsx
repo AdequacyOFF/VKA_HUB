@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Container, Title, Grid, Stack, Avatar, Badge, Text, Group } from '@mantine/core';
+import { Container, Title, Grid, Stack, Avatar, Badge, Text, Group, ActionIcon } from '@mantine/core';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
-import { IconUsers, IconCrown, IconUserPlus, IconFileText, IconTrophy, IconFlag } from '@tabler/icons-react';
+import { IconUsers, IconCrown, IconUserPlus, IconFileText, IconTrophy, IconFlag, IconUserMinus } from '@tabler/icons-react';
 import { VTBCard } from '../../components/common/VTBCard';
 import { VTBButton } from '../../components/common/VTBButton';
 import { ConfirmModal } from '../../components/common/ConfirmModal';
@@ -19,6 +19,8 @@ export function TeamDetail() {
   const queryClient = useQueryClient();
   const user = useAuthStore((state) => state.user);
   const [joinModalOpened, setJoinModalOpened] = useState(false);
+  const [removeMemberModalOpened, setRemoveMemberModalOpened] = useState(false);
+  const [memberToRemove, setMemberToRemove] = useState<TeamMember | null>(null);
 
   const { data: team, isLoading, error } = useQuery<Team>({
     queryKey: queryKeys.teams.detail(id!),
@@ -58,6 +60,31 @@ export function TeamDetail() {
       notifications.show({
         title: 'Ошибка',
         message: error?.response?.data?.detail || 'Не удалось отправить заявку',
+        color: 'red',
+      });
+    },
+  });
+
+  const removeMemberMutation = useMutation({
+    mutationFn: (userId: number) => {
+      if (!id) throw new Error('Team ID is required');
+      return teamsApi.removeMember(Number(id), userId);
+    },
+    onSuccess: () => {
+      invalidateTeamQueries({ queryClient }, Number(id));
+
+      notifications.show({
+        title: 'Успех',
+        message: 'Участник удален из команды',
+        color: 'teal',
+      });
+      setRemoveMemberModalOpened(false);
+      setMemberToRemove(null);
+    },
+    onError: (error: any) => {
+      notifications.show({
+        title: 'Ошибка',
+        message: error?.response?.data?.detail || 'Не удалось удалить участника',
         color: 'red',
       });
     },
@@ -108,7 +135,7 @@ export function TeamDetail() {
               variant="light"
               color="cyan"
               size="lg"
-              leftSection={<IconFlag size={16} />}
+              leftSection={<IconFlag size={16} color={'black'}/>}
               style={{
                 position: 'absolute',
                 top: 16,
@@ -276,6 +303,7 @@ export function TeamDetail() {
                     style={{
                       padding: 16,
                       cursor: 'pointer',
+                      position: 'relative',
                     }}
                     onClick={() => navigate(`/users/${member.user_id}`)}
                   >
@@ -304,6 +332,26 @@ export function TeamDetail() {
                           </Text>
                         )}
                       </Stack>
+                      {isCaptain && member.user_id !== team.captain_id && (
+                        <ActionIcon
+                          variant="subtle"
+                          color="red"
+                          size="lg"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setMemberToRemove(member);
+                            setRemoveMemberModalOpened(true);
+                          }}
+                          style={{
+                            position: 'absolute',
+                            top: 8,
+                            right: 8,
+                          }}
+                          title="Удалить участника"
+                        >
+                          <IconUserMinus size={18} />
+                        </ActionIcon>
+                      )}
                     </Group>
                   </div>
                 </Grid.Col>
@@ -320,6 +368,24 @@ export function TeamDetail() {
           message={`Вы уверены, что хотите подать заявку на вступление в команду "${team.name}"? Капитан команды рассмотрит вашу заявку.`}
           confirmText="Подать заявку"
           loading={joinMutation.isPending}
+        />
+
+        <ConfirmModal
+          opened={removeMemberModalOpened}
+          onClose={() => {
+            setRemoveMemberModalOpened(false);
+            setMemberToRemove(null);
+          }}
+          onConfirm={() => {
+            if (memberToRemove) {
+              removeMemberMutation.mutate(memberToRemove.user_id);
+            }
+          }}
+          title="Удалить участника"
+          message={`Вы уверены, что хотите удалить ${memberToRemove?.first_name} ${memberToRemove?.last_name} из команды?`}
+          confirmText="Удалить"
+          loading={removeMemberMutation.isPending}
+          danger
         />
       </Stack>
     </Container>

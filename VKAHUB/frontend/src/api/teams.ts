@@ -51,4 +51,9 @@ export const teamsApi = {
     const response = await axiosInstance.get(`/api/teams/${teamId}/statistics`);
     return response.data;
   },
+
+  removeMember: async (teamId: number, userId: number): Promise<{ message: string }> => {
+    const response = await axiosInstance.delete(`/api/teams/${teamId}/members/${userId}`);
+    return response.data;
+  },
 };

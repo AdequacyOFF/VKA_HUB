@@ -40,7 +40,7 @@ export function TeamCard({
             variant="light"
             color="cyan"
             size="sm"
-            leftSection={<IconFlag size={12} />}
+            leftSection={<IconFlag size={12}  color={'black'}/>}
             style={{
               position: 'absolute',
               top: 12,

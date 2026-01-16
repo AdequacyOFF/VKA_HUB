@@ -82,7 +82,7 @@ export function ModeratorModerators() {
             </Title>
             <Text c="white" size="lg">Назначение и управление модераторами</Text>
           </div>
-          <VTBButton leftSection={<IconUserPlus size={18} />} onClick={() => setAddModalOpened(true)}>
+          <VTBButton leftSection={<IconUserPlus size={18} color={'black'}/>} onClick={() => setAddModalOpened(true)}>
             Добавить модератора
           </VTBButton>
         </Group>
