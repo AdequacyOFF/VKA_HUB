@@ -169,6 +169,7 @@ export function ModeratorAnalytics() {
                       <Tooltip
                         contentStyle={{ background: '#0A1F44', border: '1px solid #00D9FF', borderRadius: 8 }}
                         labelStyle={{ color: '#ffffff' }}
+                        itemStyle={{ color: '#ffffff' }}
                       />
                     </PieChart>
                   </ResponsiveContainer>

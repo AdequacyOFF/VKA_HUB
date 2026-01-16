@@ -472,6 +472,62 @@ async def request_captain_change(
     return {"message": "Captain change request sent to moderators"}
 
 
+@router.delete("/{team_id}/members/{user_id}")
+async def remove_team_member(
+    team_id: int,
+    user_id: int,
+    current_user = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Remove a member from the team (captain only)"""
+    team_repo = TeamRepositoryImpl(db)
+    team = await team_repo.get_by_id(team_id)
+
+    if not team:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Team not found"
+        )
+
+    # Check if current user is captain
+    if team.captain_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only team captain can remove members"
+        )
+
+    # Captain cannot remove themselves
+    if user_id == current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Captain cannot remove themselves. Use leave team or transfer captain role first."
+        )
+
+    # Check if user is a member of this team
+    members = await team_repo.get_team_members(team_id)
+    user_membership = next(
+        (m for m in members if m.user_id == user_id),
+        None
+    )
+
+    if not user_membership:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User is not a member of this team"
+        )
+
+    # Remove user from team (sets left_at = now)
+    success = await team_repo.remove_member(team_id, user_id)
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to remove member"
+        )
+
+    await db.commit()
+    return {"message": "Member removed successfully"}
+
+
 @router.get("/{team_id}/reports")
 async def get_team_reports(
     team_id: int,
