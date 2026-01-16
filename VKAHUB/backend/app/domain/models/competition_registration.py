@@ -21,6 +21,8 @@ class CompetitionRegistration(Base):
     result = Column(Text)  # Competition result/placement
     applied_at = Column(DateTime, server_default=func.now(), nullable=False)
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=False)
+    reviewed_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    reviewed_at = Column(DateTime, nullable=True)
 
     # Relationships
     competition = relationship("Competition", back_populates="registrations")

@@ -639,10 +639,11 @@ async def generate_competition_report(
                 detail="Competition not found"
             )
 
-        # Get all registrations for this competition
+        # Get only approved registrations for this competition
         registrations_result = await db.execute(
             select(CompetitionRegistration)
             .where(CompetitionRegistration.competition_id == competition_id)
+            .where(CompetitionRegistration.status == "approved")
             .order_by(CompetitionRegistration.applied_at.asc())
         )
         registrations = registrations_result.scalars().all()
@@ -1122,5 +1123,94 @@ async def remove_team_from_competition(
 
     return {
         "message": "Team removed successfully",
+        "notifications_sent": len(team_members)
+    }
+
+
+class UpdateRegistrationStatusRequest(BaseModel):
+    """Request body for updating registration status"""
+    status: str = Field(..., pattern="^(approved|rejected)$", description="New status: approved or rejected")
+
+
+@router.patch("/{competition_id}/registrations/{registration_id}/status")
+async def update_registration_status(
+    competition_id: int,
+    registration_id: int,
+    request: UpdateRegistrationStatusRequest,
+    current_user = Depends(require_moderator),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Approve or reject a team registration (moderator only).
+    Sends notifications to all team members.
+    """
+    from sqlalchemy import select
+    from app.domain.models.notification import Notification
+    from app.domain.models.competition_team_member import CompetitionTeamMember
+
+    competition_repo = CompetitionRepositoryImpl(db)
+
+    # Verify competition exists
+    competition = await competition_repo.get_by_id(competition_id)
+    if not competition:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Соревнование не найдено"
+        )
+
+    # Get registration
+    result = await db.execute(
+        select(CompetitionRegistration)
+        .where(CompetitionRegistration.id == registration_id)
+        .where(CompetitionRegistration.competition_id == competition_id)
+    )
+    registration = result.scalar_one_or_none()
+
+    if not registration:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Заявка не найдена"
+        )
+
+    # Update status
+    old_status = registration.status
+    registration.status = request.status
+    registration.reviewed_by = current_user.id
+    registration.reviewed_at = datetime.utcnow()
+
+    # Get team name for notification
+    team_repo = TeamRepositoryImpl(db)
+    team = await team_repo.get_by_id(registration.team_id)
+    team_name = team.name if team else "Unknown"
+
+    # Get all team members who were registered
+    members_result = await db.execute(
+        select(CompetitionTeamMember)
+        .where(CompetitionTeamMember.registration_id == registration.id)
+    )
+    team_members = members_result.scalars().all()
+
+    # Create notifications for all team members
+    status_text_ru = "одобрена" if request.status == "approved" else "отклонена"
+    status_text_en = "approved" if request.status == "approved" else "rejected"
+    notification_type = f"registration_{request.status}"
+
+    for member in team_members:
+        notification = Notification(
+            user_id=member.user_id,
+            type=notification_type,
+            title=f"Заявка {status_text_ru}",
+            message=f"Заявка команды '{team_name}' на участие в соревновании '{competition.name}' была {status_text_ru}.",
+            read=False
+        )
+        db.add(notification)
+
+    await db.commit()
+
+    return {
+        "message": f"Registration status updated to {request.status}",
+        "registration_id": registration_id,
+        "old_status": old_status,
+        "new_status": request.status,
         "notifications_sent": len(team_members)
     }

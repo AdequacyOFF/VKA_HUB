@@ -4,6 +4,7 @@ import { useDisclosure, useMediaQuery } from '@mantine/hooks';
 import { IconShieldCheck, IconMessageReport, IconArrowLeft } from '@tabler/icons-react';
 import { useAuthStore } from '@/store';
 import { UnreadResponsesModal } from '@/components/UnreadResponsesModal';
+import { useNotificationPolling } from '@/hooks/useNotificationPolling';
 
 export function MainLayout() {
   const { isAuthenticated, user, logout } = useAuthStore();
@@ -12,6 +13,9 @@ export function MainLayout() {
   const isMobile = useMediaQuery(`(max-width: ${theme.breakpoints.md})`);
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Enable notification polling for authenticated users
+  useNotificationPolling();
 
   // Show back button on all pages except home
   const showBackButton = location.pathname !== '/';

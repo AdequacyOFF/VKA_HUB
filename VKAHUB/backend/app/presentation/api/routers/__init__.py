@@ -8,6 +8,7 @@ from .certificates import router as certificates_router
 from .reports import router as reports_router
 from .moderator import router as moderator_router
 from .public import router as public_router
+from .notifications import router as notifications_router
 
 __all__ = [
     "auth_router",
@@ -18,4 +19,5 @@ __all__ = [
     "reports_router",
     "moderator_router",
     "public_router",
+    "notifications_router",
 ]

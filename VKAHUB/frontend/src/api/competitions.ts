@@ -50,6 +50,11 @@ export const competitionsApi = {
     return response.data;
   },
 
+  updateRegistrationStatus: async (competitionId: number, registrationId: number, status: 'approved' | 'rejected') => {
+    const response = await axiosInstance.patch(`/api/competitions/${competitionId}/registrations/${registrationId}/status`, { status });
+    return response.data;
+  },
+
   generateCompetitionReport: async (competitionId: number) => {
     const response = await axiosInstance.get(`/api/competitions/${competitionId}/reports/generate`, {
       responseType: 'blob'
