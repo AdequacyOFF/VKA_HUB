@@ -299,7 +299,7 @@ export function EditTeam() {
                     <VTBButton
                       type="submit"
                       loading={updateTeamMutation.isPending}
-                      leftSection={<IconUsers size={18} />}
+                      leftSection={<IconUsers size={18} color={'black'}/>}
                     >
                       Сохранить изменения
                     </VTBButton>
