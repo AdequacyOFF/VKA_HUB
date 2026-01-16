@@ -252,7 +252,7 @@ export function AvatarUploader({
           />
         </Dropzone>
 
-        <Group gap="xs" style={{ position: 'absolute', bottom: -5, right: -5 }}>
+        <Group gap="xs" style={{ position: 'absolute', bottom: -15 }}>
           <FileButton onChange={handleFileSelect} accept="image/png,image/jpeg,image/jpg,image/webp">
             {(props) => (
               <ActionIcon
@@ -268,7 +268,7 @@ export function AvatarUploader({
                   boxShadow: '0 4px 12px rgba(0, 217, 255, 0.3)',
                 }}
               >
-                <IconCamera size={18} />
+                <IconCamera size={18} color={'black'}/>
               </ActionIcon>
             )}
           </FileButton>

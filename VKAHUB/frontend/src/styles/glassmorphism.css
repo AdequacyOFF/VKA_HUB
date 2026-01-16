@@ -225,6 +225,91 @@ body::after {
   border: 2px solid var(--vtb-cyan) !important;
 }
 
+/* Fix for inputs with left section (icons) - prevent text overlap */
+[data-with-left-section="true"] .glass-input,
+.mantine-TextInput-wrapper[data-with-left-section="true"] .glass-input,
+.mantine-PasswordInput-wrapper[data-with-left-section="true"] .glass-input,
+.mantine-Select-wrapper[data-with-left-section="true"] .glass-input,
+.mantine-NumberInput-wrapper[data-with-left-section="true"] .glass-input,
+.mantine-Textarea-wrapper[data-with-left-section="true"] .glass-input,
+.mantine-MultiSelect-wrapper[data-with-left-section="true"] .glass-input,
+.mantine-DateInput-wrapper[data-with-left-section="true"] .glass-input,
+.mantine-DateTimePicker-wrapper[data-with-left-section="true"] .glass-input,
+.mantine-DatePickerInput-wrapper[data-with-left-section="true"] .glass-input,
+.mantine-TimeInput-wrapper[data-with-left-section="true"] .glass-input {
+  padding-left: 42px !important;
+}
+
+/* Fix for inputs with right section (icons/buttons) - prevent text overlap */
+[data-with-right-section="true"] .glass-input,
+.mantine-TextInput-wrapper[data-with-right-section="true"] .glass-input,
+.mantine-PasswordInput-wrapper[data-with-right-section="true"] .glass-input,
+.mantine-Select-wrapper[data-with-right-section="true"] .glass-input,
+.mantine-NumberInput-wrapper[data-with-right-section="true"] .glass-input,
+.mantine-Textarea-wrapper[data-with-right-section="true"] .glass-input,
+.mantine-MultiSelect-wrapper[data-with-right-section="true"] .glass-input,
+.mantine-DateInput-wrapper[data-with-right-section="true"] .glass-input,
+.mantine-DateTimePicker-wrapper[data-with-right-section="true"] .glass-input,
+.mantine-DatePickerInput-wrapper[data-with-right-section="true"] .glass-input,
+.mantine-TimeInput-wrapper[data-with-right-section="true"] .glass-input {
+  padding-right: 42px !important;
+}
+
+/* Fix for inputs with both sections */
+[data-with-left-section="true"][data-with-right-section="true"] .glass-input {
+  padding-left: 42px !important;
+  padding-right: 42px !important;
+}
+
+/* Ensure icon sections are properly positioned */
+.mantine-Input-section[data-position="left"],
+.mantine-TextInput-section[data-position="left"],
+.mantine-PasswordInput-section[data-position="left"],
+.mantine-Select-section[data-position="left"],
+.mantine-NumberInput-section[data-position="left"],
+.mantine-DateInput-section[data-position="left"],
+.mantine-DateTimePicker-section[data-position="left"],
+.mantine-DatePickerInput-section[data-position="left"],
+.mantine-TimeInput-section[data-position="left"] {
+  left: 12px !important;
+  color: var(--vtb-cyan) !important;
+}
+
+.mantine-Input-section[data-position="right"],
+.mantine-TextInput-section[data-position="right"],
+.mantine-PasswordInput-section[data-position="right"],
+.mantine-Select-section[data-position="right"],
+.mantine-NumberInput-section[data-position="right"],
+.mantine-DateInput-section[data-position="right"],
+.mantine-DateTimePicker-section[data-position="right"],
+.mantine-DatePickerInput-section[data-position="right"],
+.mantine-TimeInput-section[data-position="right"] {
+  right: 12px !important;
+  color: var(--vtb-cyan) !important;
+}
+
+/* Generic fallback for any input wrapper with sections */
+[class*="-wrapper"][data-with-left-section="true"] .glass-input,
+[class*="-root"][data-with-left-section="true"] .glass-input {
+  padding-left: 42px !important;
+}
+
+[class*="-wrapper"][data-with-right-section="true"] .glass-input,
+[class*="-root"][data-with-right-section="true"] .glass-input {
+  padding-right: 42px !important;
+}
+
+/* Generic fallback for section positioning */
+[class*="-section"][data-position="left"] {
+  left: 12px !important;
+  color: var(--vtb-cyan) !important;
+}
+
+[class*="-section"][data-position="right"] {
+  right: 12px !important;
+  color: var(--vtb-cyan) !important;
+}
+
 /* Glass Button */
 .glass-button {
   background: rgba(255, 255, 255, 0.15);
