@@ -480,7 +480,11 @@ async def remove_team_member(
     db: AsyncSession = Depends(get_db)
 ):
     """Remove a member from the team (captain only)"""
+    from app.domain.models.notification import Notification
+    from app.infrastructure.repositories.user_repository_impl import UserRepositoryImpl
+
     team_repo = TeamRepositoryImpl(db)
+    user_repo = UserRepositoryImpl(db)
     team = await team_repo.get_by_id(team_id)
 
     if not team:
@@ -512,9 +516,12 @@ async def remove_team_member(
 
     if not user_membership:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_404_NOT_FOUND,
             detail="User is not a member of this team"
         )
+
+    # Get removed user's details for notification
+    removed_user = await user_repo.get_by_id(user_id)
 
     # Remove user from team (sets left_at = now)
     success = await team_repo.remove_member(team_id, user_id)
@@ -524,8 +531,24 @@ async def remove_team_member(
             detail="Failed to remove member"
         )
 
+    # Create notification for the removed user
+    captain_name = f"{current_user.first_name} {current_user.last_name}".strip() or current_user.login
+    notification = Notification(
+        user_id=user_id,
+        type="team_member_removed",
+        title="Вы были исключены из команды",
+        message=f"Вы были исключены из команды «{team.name}» капитаном {captain_name}.",
+        read=False
+    )
+    db.add(notification)
+
     await db.commit()
-    return {"message": "Member removed successfully"}
+
+    removed_user_name = f"{removed_user.first_name} {removed_user.last_name}".strip() if removed_user else "Участник"
+    return {
+        "message": "Member removed successfully",
+        "removed_user_name": removed_user_name
+    }
 
 
 @router.get("/{team_id}/reports")

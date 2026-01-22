@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { Stack, Title, Text, Group, Avatar, Badge, Grid, ActionIcon } from '@mantine/core';
+import { Stack, Title, Text, Group, Avatar, Badge, Grid, ActionIcon, Tooltip } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { IconUsers, IconCrown, IconLogout, IconSettings, IconUserPlus, IconFileText } from '@tabler/icons-react';
+import { IconUsers, IconCrown, IconLogout, IconSettings, IconUserPlus, IconFileText, IconX } from '@tabler/icons-react';
 import { VTBCard } from '../../../components/common/VTBCard';
 import { VTBButton } from '../../../components/common/VTBButton';
 import { ConfirmModal } from '../../../components/common/ConfirmModal';
@@ -22,7 +22,9 @@ export function MyTeam() {
   const currentTab = searchParams.get('tab') || 'my-team';
   const [leaveModalOpened, setLeaveModalOpened] = useState(false);
   const [captainChangeModalOpened, setCaptainChangeModalOpened] = useState(false);
+  const [removeMemberModalOpened, setRemoveMemberModalOpened] = useState(false);
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
+  const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
 
   const { data: teams, isLoading } = useQuery<Team[]>({
     queryKey: queryKeys.teams.myTeam(user?.id),
@@ -77,6 +79,38 @@ export function MyTeam() {
       notifications.show({
         title: 'Ошибка',
         message: 'Не удалось отправить запрос',
+        color: 'red',
+      });
+    },
+  });
+
+  const removeMemberMutation = useMutation({
+    mutationFn: () => api.delete(`/api/teams/${selectedTeam?.id}/members/${selectedMember?.user_id}`),
+    onSuccess: (response) => {
+      invalidateTeamQueries({ queryClient }, selectedTeam?.id);
+      invalidateUserQueries({ queryClient }, user?.id);
+      const memberName = response.data?.removed_user_name || `${selectedMember?.first_name} ${selectedMember?.last_name}`;
+      notifications.show({
+        title: 'Успех',
+        message: `${memberName} был(а) исключен(а) из команды`,
+        color: 'teal',
+      });
+      setRemoveMemberModalOpened(false);
+      setSelectedMember(null);
+      setSelectedTeam(null);
+    },
+    onError: (error: any) => {
+      let errorMessage = 'Не удалось исключить участника из команды';
+      if (error.response?.status === 403) {
+        errorMessage = 'У вас нет прав для исключения участников';
+      } else if (error.response?.status === 404) {
+        errorMessage = 'Участник не найден в команде';
+      } else if (error.response?.data?.detail) {
+        errorMessage = error.response.data.detail;
+      }
+      notifications.show({
+        title: 'Ошибка',
+        message: errorMessage,
         color: 'red',
       });
     },
@@ -283,46 +317,92 @@ export function MyTeam() {
                 Участники команды
               </Title>
               <Grid gutter="md">
-                {safeMembers.map((member) => (
-                  <Grid.Col key={member.id} span={{ base: 12, sm: 6, md: 4 }}>
-                    <div
-                      className="glass-card"
-                      style={{
-                        padding: 16,
-                        cursor: 'pointer',
-                        transition: 'all 0.3s ease',
-                      }}
-                      onClick={() => navigate(`/users/${member.user_id}`)}
-                    >
-                      <Group>
-                        <Avatar
-                          src={member.avatar}
-                          size="md"
-                          radius="xl"
-                          className="vtb-avatar"
-                          style={{
-                            border: '2px solid var(--vtb-cyan)',
-                          }}
-                        />
-                        <Stack gap={4} style={{ flex: 1 }}>
-                          <Group gap="xs">
-                            <Text fw={600} c="white" size="sm">
-                              {member.first_name} {member.last_name}
-                            </Text>
-                            {member.user_id === team.captain_id && (
-                              <IconCrown size={16} color="#fbbf24" />
+                {safeMembers.map((member) => {
+                  const isMemberCaptain = member.user_id === team.captain_id;
+                  const canRemove = isCaptain && !isMemberCaptain;
+
+                  return (
+                    <Grid.Col key={member.id} span={{ base: 12, sm: 6, md: 4 }}>
+                      <div
+                        className="glass-card"
+                        style={{
+                          padding: 16,
+                          cursor: 'pointer',
+                          transition: 'all 0.3s ease',
+                          position: 'relative',
+                        }}
+                        onClick={() => navigate(`/users/${member.user_id}`)}
+                      >
+                        <Group>
+                          <Avatar
+                            src={member.avatar}
+                            size="md"
+                            radius="xl"
+                            className="vtb-avatar"
+                            style={{
+                              border: '2px solid var(--vtb-cyan)',
+                            }}
+                          />
+                          <Stack gap={4} style={{ flex: 1 }}>
+                            <Group gap="xs">
+                              <Text fw={600} c="white" size="sm">
+                                {member.first_name} {member.last_name}
+                              </Text>
+                              {isMemberCaptain && (
+                                <IconCrown size={16} color="#fbbf24" />
+                              )}
+                            </Group>
+                            {member.position && (
+                              <Text size="xs" c="dimmed">
+                                {member.position}
+                              </Text>
                             )}
-                          </Group>
-                          {member.position && (
-                            <Text size="xs" c="dimmed">
-                              {member.position}
-                            </Text>
+                          </Stack>
+                          {canRemove && (
+                            <Tooltip label="Исключить из команды" position="top">
+                              <ActionIcon
+                                variant="subtle"
+                                color="red"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedTeam(team);
+                                  setSelectedMember(member);
+                                  setRemoveMemberModalOpened(true);
+                                }}
+                                style={{
+                                  position: 'absolute',
+                                  top: 8,
+                                  right: 8,
+                                }}
+                              >
+                                <IconX size={16} />
+                              </ActionIcon>
+                            </Tooltip>
                           )}
-                        </Stack>
-                      </Group>
-                    </div>
-                  </Grid.Col>
-                ))}
+                          {isCaptain && isMemberCaptain && (
+                            <Tooltip label="Вы не можете исключить себя" position="top">
+                              <ActionIcon
+                                variant="subtle"
+                                color="gray"
+                                size="sm"
+                                disabled
+                                style={{
+                                  position: 'absolute',
+                                  top: 8,
+                                  right: 8,
+                                  opacity: 0.3,
+                                }}
+                              >
+                                <IconX size={16} />
+                              </ActionIcon>
+                            </Tooltip>
+                          )}
+                        </Group>
+                      </div>
+                    </Grid.Col>
+                  );
+                })}
               </Grid>
             </VTBCard>
           </Stack>
@@ -358,6 +438,21 @@ export function MyTeam() {
         message="Ваш запрос будет отправлен модераторам для рассмотрения. Вы уверены?"
         confirmText="Отправить запрос"
         loading={requestCaptainChangeMutation.isPending}
+      />
+
+      <ConfirmModal
+        opened={removeMemberModalOpened}
+        onClose={() => {
+          setRemoveMemberModalOpened(false);
+          setSelectedMember(null);
+          setSelectedTeam(null);
+        }}
+        onConfirm={() => removeMemberMutation.mutate()}
+        title="Исключить участника?"
+        message={`Вы уверены, что хотите исключить ${selectedMember?.first_name} ${selectedMember?.last_name} из команды «${selectedTeam?.name}»?`}
+        confirmText="Исключить"
+        loading={removeMemberMutation.isPending}
+        danger
       />
     </Stack>
   );
