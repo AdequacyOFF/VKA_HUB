@@ -22,6 +22,7 @@ import neonBriefcase from '../assets/images/neon_briefcase.png';
 import neonMail from '../assets/images/neon_mail.png';
 import neonUsb from '../assets/images/neon_usb.png';
 import processor from '../assets/images/processor.png';
+import mozhaika from '../assets/images/mozhaika.png';
 
 export function Home() {
   const navigate = useNavigate();
@@ -47,10 +48,20 @@ export function Home() {
       <Box className="vtb-section console-lines-vertical" style={{ paddingTop: 60, paddingBottom: 60, position: 'relative' }}>
         <Container size="xl" className="vtb-container">
           <Stack align="center" gap="xl">
-            <div className="vtb-heading-hero neon-glow" style={{ textAlign: 'center' }}>
+            <img
+              src={mozhaika}
+              alt="VKA HUB"
+              className="hero-logo"
+            />
+            <div className="vtb-heading-hero" style={{ textAlign: 'center' }}>
               <div>
-                <span style={{ color: '#ffffff' }}>VKA</span>
-                <span className="vtb-gradient-text">HUB</span>
+                <span style={{ color: 'rgba(200, 220, 255, 0.9)' }}>VKA </span>
+                <span style={{
+                  background: 'linear-gradient(135deg, rgba(0, 180, 220, 0.85) 0%, rgba(100, 180, 220, 0.8) 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text'
+                }}>HUB</span>
               </div>
             </div>
 

@@ -5,6 +5,7 @@ import { IconShieldCheck, IconMessageReport, IconArrowLeft } from '@tabler/icons
 import { useAuthStore } from '@/store';
 import { UnreadResponsesModal } from '@/components/UnreadResponsesModal';
 import { useNotificationPolling } from '@/hooks/useNotificationPolling';
+import mozhaika from '@/assets/images/mozhaika.png';
 
 export function MainLayout() {
   const { isAuthenticated, user, logout } = useAuthStore();
@@ -119,7 +120,12 @@ export function MainLayout() {
       <AppShell.Header className="glass-header">
         <Group h="100%" px="md" justify="space-between">
           <Group>
-            <Link to="/" style={{ textDecoration: 'none', color: 'inherit' }}>
+            <Link to="/" style={{ textDecoration: 'none', color: 'inherit', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <img
+                src={mozhaika}
+                alt="VKA HUB"
+                className="header-logo"
+              />
               <Text
                 size="xl"
                 fw={700}

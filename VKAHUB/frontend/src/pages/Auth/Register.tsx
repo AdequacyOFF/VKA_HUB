@@ -10,6 +10,7 @@ import { ConsoleInput } from '../../components/common/ConsoleInput';
 import { ConsolePasswordInput } from '../../components/common/ConsolePasswordInput';
 import { authApi } from '../../api';
 import { useAuthStore } from '../../store/authStore';
+import mozhaika from '../../assets/images/mozhaika.png';
 
 export function Register() {
   const navigate = useNavigate();
@@ -80,6 +81,12 @@ export function Register() {
       <Container size="sm">
         <Stack align="center" gap="xl">
           <div style={{ textAlign: 'center' }}>
+            <img
+              src={mozhaika}
+              alt="VKA HUB"
+              className="auth-logo"
+              style={{ marginBottom: '1rem' }}
+            />
             <Title order={1} className="vtb-heading-hero" style={{ fontSize: '3rem' }}>
               <span className="vtb-gradient-text">Регистрация</span>
             </Title>

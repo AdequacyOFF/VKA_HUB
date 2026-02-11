@@ -38,6 +38,28 @@ const positions = [
   'Офицер кафедры',
 ];
 
+// Positions that don't require a study group (officers/department staff)
+const officerPositions = [
+  'Начальник кафедры',
+  'Заместитель начальника кафедры',
+  'Офицер кафедры',
+];
+
+// Ranks above "Старшина" (chief petty officer) - officer ranks
+const officerRanks = [
+  'Лейтенант',
+  'Старший лейтенант',
+  'Капитан',
+  'Майор',
+  'Подполковник',
+  'Полковник',
+];
+
+// Helper function to check if study group should be optional
+const isStudyGroupOptional = (position: string, rank: string): boolean => {
+  return officerPositions.includes(position) || officerRanks.includes(rank);
+};
+
 export function GeneralInformation() {
   const user = useAuthStore((state) => state.user);
   const setUser = useAuthStore((state) => state.setUser);
@@ -70,12 +92,20 @@ export function GeneralInformation() {
       lastName: (value) => (!value ? 'Обязательное поле' : null),
       firstName: (value) => (!value ? 'Обязательное поле' : null),
       middleName: (value) => (!value ? 'Обязательное поле' : null),
-      studyGroup: (value) =>
-        !value
-          ? 'Обязательное поле'
-          : /[^0-9/]/.test(value)
-          ? 'Допустимы только цифры и /'
-          : null,
+      studyGroup: (value, values) => {
+        // Study group is optional for officers and department staff
+        if (isStudyGroupOptional(values.position, values.rank)) {
+          // If value exists, validate format
+          if (value && /[^0-9/]/.test(value)) {
+            return 'Допустимы только цифры и /';
+          }
+          return null;
+        }
+        // Required for cadets
+        if (!value) return 'Обязательное поле';
+        if (/[^0-9/]/.test(value)) return 'Допустимы только цифры и /';
+        return null;
+      },
       rank: (value) => (!value ? 'Обязательное поле' : null),
       position: (value) => (!value ? 'Обязательное поле' : null),
       // Контрольный вопрос необязательный
@@ -96,6 +126,14 @@ export function GeneralInformation() {
       });
     }
   }, [currentUser]);
+
+  // Clear study group when officer position or rank is selected
+  useEffect(() => {
+    const { position, rank, studyGroup } = form.values;
+    if (isStudyGroupOptional(position, rank) && studyGroup) {
+      form.setFieldValue('studyGroup', '');
+    }
+  }, [form.values.position, form.values.rank]);
 
   const handleSubmit = async (values: typeof form.values) => {
     const validation = form.validate(); // подсветка красным незаполненных полей
@@ -186,8 +224,14 @@ export function GeneralInformation() {
 
               <Group grow>
                 <ConsoleInput
-                  label="Учебная группа"
-                  placeholder="621/11"
+                  label={isStudyGroupOptional(form.values.position, form.values.rank)
+                    ? "Учебная группа (необязательно)"
+                    : "Учебная группа"
+                  }
+                  placeholder={isStudyGroupOptional(form.values.position, form.values.rank)
+                    ? "Не требуется для офицеров"
+                    : "621/11"
+                  }
                   consolePath="C:\Profile\group"
                   {...form.getInputProps('studyGroup', { withError: true })}
                   onChange={(event) => {
@@ -195,6 +239,7 @@ export function GeneralInformation() {
                     const filteredValue = value.replace(/[^0-9/]/g, '');
                     form.setFieldValue('studyGroup', filteredValue);
                   }}
+                  disabled={isStudyGroupOptional(form.values.position, form.values.rank)}
                 />
 
                 <ConsoleSelect
