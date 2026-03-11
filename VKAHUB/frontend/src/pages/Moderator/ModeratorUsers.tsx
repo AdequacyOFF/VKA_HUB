@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';  // ✅ Добавляем useEffect
 import {
   Container, Title, Stack, Table, Badge, Group, ActionIcon,
-  Text, Modal, PasswordInput, Button, LoadingOverlay, Alert, TextInput
+  Text, Modal, PasswordInput, Button, LoadingOverlay, Alert, TextInput, ScrollArea
 } from '@mantine/core';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -413,6 +413,13 @@ export function ModeratorUsers() {
           closeOnClickOutside={!editMode && !isLoadingAny}
           closeOnEscape={!editMode && !isLoadingAny}
           withCloseButton={!editMode || !isLoadingAny}
+          scrollAreaComponent={ScrollArea.Autosize}
+          styles={{
+            body: {
+              maxHeight: 'calc(100vh - 140px)',
+              overflowY: 'auto',
+            },
+          }}
         >
           <LoadingOverlay visible={isLoadingAny} overlayProps={{ blur: 2 }} />
           

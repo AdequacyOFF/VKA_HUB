@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "/Users/gedeko/Desktop/VKA_HUB/VKAHUB/backend/tools/OpenXmlValidate/OpenXmlValidate.csproj": {}
+    "/Users/gedeko/Desktop/Рабочий стол/VKA_HUB/VKAHUB/backend/tools/OpenXmlValidate/OpenXmlValidate.csproj": {}
   },
   "projects": {
-    "/Users/gedeko/Desktop/VKA_HUB/VKAHUB/backend/tools/OpenXmlValidate/OpenXmlValidate.csproj": {
+    "/Users/gedeko/Desktop/Рабочий стол/VKA_HUB/VKAHUB/backend/tools/OpenXmlValidate/OpenXmlValidate.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/Users/gedeko/Desktop/VKA_HUB/VKAHUB/backend/tools/OpenXmlValidate/OpenXmlValidate.csproj",
+        "projectUniqueName": "/Users/gedeko/Desktop/Рабочий стол/VKA_HUB/VKAHUB/backend/tools/OpenXmlValidate/OpenXmlValidate.csproj",
         "projectName": "OpenXmlValidate",
-        "projectPath": "/Users/gedeko/Desktop/VKA_HUB/VKAHUB/backend/tools/OpenXmlValidate/OpenXmlValidate.csproj",
+        "projectPath": "/Users/gedeko/Desktop/Рабочий стол/VKA_HUB/VKAHUB/backend/tools/OpenXmlValidate/OpenXmlValidate.csproj",
         "packagesPath": "/Users/gedeko/.nuget/packages/",
-        "outputPath": "/Users/gedeko/Desktop/VKA_HUB/VKAHUB/backend/tools/OpenXmlValidate/obj/",
+        "outputPath": "/Users/gedeko/Desktop/Рабочий стол/VKA_HUB/VKAHUB/backend/tools/OpenXmlValidate/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "/Users/gedeko/.nuget/NuGet/NuGet.Config"
